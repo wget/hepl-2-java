@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<Form version="1.3" maxVersion="1.9" type="org.netbeans.modules.form.forminfo.JFrameFormInfo">
+  <Properties>
+    <Property name="defaultCloseOperation" type="int" value="3"/>
+  </Properties>
+  <SyntheticProperties>
+    <SyntheticProperty name="formSizePolicy" type="int" value="1"/>
+    <SyntheticProperty name="generateCenter" type="boolean" value="false"/>
+  </SyntheticProperties>
+  <AuxValues>
+    <AuxValue name="FormSettings_autoResourcing" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_autoSetComponentName" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_generateFQN" type="java.lang.Boolean" value="true"/>
+    <AuxValue name="FormSettings_generateMnemonicsCode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_i18nAutoMode" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_layoutCodeTarget" type="java.lang.Integer" value="1"/>
+    <AuxValue name="FormSettings_listenerGenerationStyle" type="java.lang.Integer" value="0"/>
+    <AuxValue name="FormSettings_variablesLocal" type="java.lang.Boolean" value="false"/>
+    <AuxValue name="FormSettings_variablesModifier" type="java.lang.Integer" value="2"/>
+  </AuxValues>
+
+  <Layout>
+    <DimensionLayout dim="0">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Group type="102" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" attributes="0">
+                      <Component id="dessertsLabel" max="32767" attributes="0"/>
+                      <EmptySpace min="-2" pref="926" max="-2" attributes="0"/>
+                  </Group>
+                  <Group type="102" alignment="1" attributes="0">
+                      <EmptySpace min="0" pref="18" max="32767" attributes="0"/>
+                      <Component id="jSeparator1" min="-2" pref="1092" max="-2" attributes="0"/>
+                  </Group>
+                  <Group type="102" attributes="0">
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="tableLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Component id="tableCombobox" min="-2" pref="100" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="80" max="-2" attributes="0"/>
+                              <Component id="servedPlatesLabel" min="-2" max="-2" attributes="0"/>
+                          </Group>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Group type="103" groupAlignment="0" attributes="0">
+                                  <Component id="maxCoversLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                                  <Component id="effectiveCoversLabel" alignment="0" min="-2" max="-2" attributes="0"/>
+                              </Group>
+                              <EmptySpace min="-2" pref="41" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Component id="maxCoversValueLabel" pref="40" max="32767" attributes="0"/>
+                                  <Component id="effectiveCoversValueLabel" max="32767" attributes="0"/>
+                              </Group>
+                          </Group>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Component id="jScrollPane1" min="-2" pref="398" max="-2" attributes="0"/>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Component id="drinksLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Component id="drinksAmountTextfield" min="-2" pref="50" max="-2" attributes="0"/>
+                              <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
+                          </Group>
+                          <Group type="102" attributes="0">
+                              <Component id="billLabel" min="-2" pref="29" max="-2" attributes="0"/>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Component id="billAmountLabel" max="32767" attributes="0"/>
+                          </Group>
+                      </Group>
+                      <EmptySpace type="separate" pref="32" max="32767" attributes="0"/>
+                      <Group type="103" groupAlignment="0" attributes="0">
+                          <Component id="eurLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                          <Component id="billPaidStateLabel" alignment="1" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace type="unrelated" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Component id="drinksAddButton" max="32767" attributes="0"/>
+                          <Component id="billPayButton" min="-2" pref="75" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Group type="103" groupAlignment="1" attributes="0">
+                          <Component id="dessertsCombobox" min="-2" pref="543" max="-2" attributes="0"/>
+                          <Group type="102" attributes="0">
+                              <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                                  <Component id="platesLabel" alignment="0" max="32767" attributes="0"/>
+                                  <Component id="plateOrdersLabel" alignment="0" pref="193" max="32767" attributes="0"/>
+                                  <Component id="platesCommentsLabel" max="32767" attributes="0"/>
+                              </Group>
+                              <EmptySpace type="separate" max="-2" attributes="0"/>
+                              <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                                  <Component id="platesCommentTextfield" max="32767" attributes="0"/>
+                                  <Component id="platesCombobox" pref="543" max="32767" attributes="0"/>
+                              </Group>
+                          </Group>
+                          <Component id="dessertsCommentsTextfield" alignment="1" min="-2" pref="543" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="1" max="-2" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Component id="dessertsQuantityLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="32767" attributes="0"/>
+                              <Component id="dessertsQuantityTextfield" min="-2" pref="50" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="orderPlatesButton" min="-2" pref="155" max="-2" attributes="0"/>
+                          <Group type="102" alignment="0" attributes="0">
+                              <Component id="platesQuantityLabel" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="37" max="-2" attributes="0"/>
+                              <Component id="platesQuantityTextfield" min="-2" pref="50" max="-2" attributes="0"/>
+                          </Group>
+                      </Group>
+                  </Group>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Component id="dessertsCommentsLabel" min="-2" pref="193" max="-2" attributes="0"/>
+                      <EmptySpace min="-2" pref="579" max="-2" attributes="0"/>
+                      <Component id="dessertsOrderButton" min="-2" pref="155" max="-2" attributes="0"/>
+                  </Group>
+                  <Group type="102" alignment="0" attributes="0">
+                      <Component id="ordersToSendLabel" min="-2" pref="196" max="-2" attributes="0"/>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="0" max="-2" attributes="0">
+                          <Group type="102" attributes="0">
+                              <Component id="ordersSentCheckbox" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace min="-2" pref="25" max="-2" attributes="0"/>
+                              <Component id="ordersReadyCheckbox" min="-2" max="-2" attributes="0"/>
+                              <EmptySpace max="32767" attributes="0"/>
+                              <Component id="readAvailablePlatesButton" min="-2" pref="180" max="-2" attributes="0"/>
+                          </Group>
+                          <Component id="jScrollPane2" min="-2" pref="540" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Component id="ordersSendButton" min="-2" pref="155" max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+              <EmptySpace max="-2" attributes="0"/>
+          </Group>
+      </Group>
+    </DimensionLayout>
+    <DimensionLayout dim="1">
+      <Group type="103" groupAlignment="0" attributes="0">
+          <Group type="102" alignment="0" attributes="0">
+              <EmptySpace max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Group type="102" alignment="0" attributes="0">
+                      <EmptySpace min="-2" pref="54" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="billPayButton" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="billPaidStateLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="billAmountLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="billLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                  <Component id="drinksAddButton" alignment="0" min="-2" max="-2" attributes="0"/>
+                  <Component id="jScrollPane1" min="-2" max="-2" attributes="0"/>
+                  <Group type="102" attributes="0">
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="tableLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="tableCombobox" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="servedPlatesLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="maxCoversLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="maxCoversValueLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                      <EmptySpace type="separate" max="-2" attributes="0"/>
+                      <Group type="103" groupAlignment="3" attributes="0">
+                          <Component id="effectiveCoversLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                          <Component id="effectiveCoversValueLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      </Group>
+                  </Group>
+                  <Group type="103" alignment="0" groupAlignment="3" attributes="0">
+                      <Component id="drinksAmountTextfield" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="eurLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                      <Component id="drinksLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  </Group>
+              </Group>
+              <EmptySpace min="-2" pref="25" max="-2" attributes="0"/>
+              <Component id="plateOrdersLabel" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="platesLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="platesCombobox" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="platesQuantityLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="platesQuantityTextfield" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="platesCommentTextfield" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="platesCommentsLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="orderPlatesButton" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="dessertsCombobox" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="dessertsLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="dessertsQuantityLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="dessertsQuantityTextfield" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="3" attributes="0">
+                  <Component id="dessertsCommentsLabel" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="dessertsCommentsTextfield" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="dessertsOrderButton" alignment="3" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Component id="jSeparator1" min="-2" pref="10" max="-2" attributes="0"/>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Component id="ordersToSendLabel" min="-2" max="-2" attributes="0"/>
+                  <Component id="jScrollPane2" min="-2" pref="99" max="-2" attributes="0"/>
+                  <Component id="ordersSendButton" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace type="separate" max="-2" attributes="0"/>
+              <Group type="103" groupAlignment="0" attributes="0">
+                  <Component id="ordersSentCheckbox" min="-2" max="-2" attributes="0"/>
+                  <Component id="ordersReadyCheckbox" min="-2" max="-2" attributes="0"/>
+                  <Component id="readAvailablePlatesButton" min="-2" max="-2" attributes="0"/>
+              </Group>
+              <EmptySpace pref="16" max="32767" attributes="0"/>
+          </Group>
+      </Group>
+    </DimensionLayout>
+  </Layout>
+  <SubComponents>
+    <Component class="javax.swing.JLabel" name="tableLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Table:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JComboBox" name="tableCombobox">
+      <Properties>
+        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
+          <StringArray count="0"/>
+        </Property>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="tableComboboxActionPerformed"/>
+      </Events>
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+      </AuxValues>
+    </Component>
+    <Component class="javax.swing.JLabel" name="maxCoversLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Max covers:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="effectiveCoversLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Effective covers:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="maxCoversValueLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="effectiveCoversValueLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="servedPlatesLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Served plates:"/>
+      </Properties>
+    </Component>
+    <Container class="javax.swing.JScrollPane" name="jScrollPane1">
+      <AuxValues>
+        <AuxValue name="autoScrollPane" type="java.lang.Boolean" value="true"/>
+      </AuxValues>
+
+      <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
+      <SubComponents>
+        <Component class="javax.swing.JList" name="servedPlatesList">
+          <Properties>
+            <Property name="model" type="javax.swing.ListModel" editor="org.netbeans.modules.form.editors2.ListModelEditor">
+              <StringArray count="0"/>
+            </Property>
+          </Properties>
+          <AuxValues>
+            <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+          </AuxValues>
+        </Component>
+      </SubComponents>
+    </Container>
+    <Component class="javax.swing.JLabel" name="drinksLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Drinks (bar):"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="drinksAmountTextfield">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="eurLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="EUR"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JButton" name="drinksAddButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Add"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="billLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Bill:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="billPaidStateLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="NOT PAID"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JButton" name="billPayButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Pay"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="plateOrdersLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Plate orders:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="platesLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Plates:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JComboBox" name="platesCombobox">
+      <Properties>
+        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
+          <StringArray count="0"/>
+        </Property>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="platesComboboxActionPerformed"/>
+      </Events>
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+      </AuxValues>
+    </Component>
+    <Component class="javax.swing.JLabel" name="platesQuantityLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Quantity:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="platesQuantityTextfield">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="platesCommentTextfield">
+    </Component>
+    <Component class="javax.swing.JLabel" name="platesCommentsLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Comments:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JButton" name="orderPlatesButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Order plates"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="orderPlatesButtonActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JLabel" name="dessertsLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Desserts:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JComboBox" name="dessertsCombobox">
+      <Properties>
+        <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
+          <StringArray count="0"/>
+        </Property>
+      </Properties>
+      <AuxValues>
+        <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+      </AuxValues>
+    </Component>
+    <Component class="javax.swing.JLabel" name="dessertsQuantityLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Quantity:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="dessertsQuantityTextfield">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="X"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="dessertsCommentsLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Comments:"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JTextField" name="dessertsCommentsTextfield">
+    </Component>
+    <Component class="javax.swing.JToggleButton" name="dessertsOrderButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Order desserts"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="dessertsOrderButtonActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JSeparator" name="jSeparator1">
+    </Component>
+    <Component class="javax.swing.JLabel" name="ordersToSendLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Orders to send:"/>
+      </Properties>
+    </Component>
+    <Container class="javax.swing.JScrollPane" name="jScrollPane2">
+      <AuxValues>
+        <AuxValue name="autoScrollPane" type="java.lang.Boolean" value="true"/>
+      </AuxValues>
+
+      <Layout class="org.netbeans.modules.form.compat2.layouts.support.JScrollPaneSupportLayout"/>
+      <SubComponents>
+        <Component class="javax.swing.JList" name="ordersToSendList">
+          <Properties>
+            <Property name="model" type="javax.swing.ListModel" editor="org.netbeans.modules.form.editors2.ListModelEditor">
+              <StringArray count="0"/>
+            </Property>
+          </Properties>
+          <AuxValues>
+            <AuxValue name="JavaCodeGenerator_TypeParameters" type="java.lang.String" value="&lt;String&gt;"/>
+          </AuxValues>
+        </Component>
+      </SubComponents>
+    </Container>
+    <Component class="javax.swing.JButton" name="ordersSendButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Send orders"/>
+      </Properties>
+      <Events>
+        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="ordersSendButtonActionPerformed"/>
+      </Events>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="ordersSentCheckbox">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Orders sent"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JCheckBox" name="ordersReadyCheckbox">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Orders ready"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JButton" name="readAvailablePlatesButton">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="Read available plates"/>
+      </Properties>
+    </Component>
+    <Component class="javax.swing.JLabel" name="billAmountLabel">
+      <Properties>
+        <Property name="text" type="java.lang.String" value="0 EUR"/>
+      </Properties>
+    </Component>
+  </SubComponents>
+</Form>
