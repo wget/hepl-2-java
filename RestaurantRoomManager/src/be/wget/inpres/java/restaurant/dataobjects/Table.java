@@ -35,6 +35,7 @@ public class Table {
     public Table(String number, int maxCovers) {
         this.number = number;
         this.maxCovers = maxCovers;
+        this.orders = new ArrayList<>();
     }   
     
     public void addOrder(PlateOrder order) {

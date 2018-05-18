@@ -22,8 +22,11 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurantroommanager.TooManyCoversException;
+import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DecimalFormat;
@@ -53,10 +56,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private Table selectedTable;
     private int plateQuantity;
     private int dessertQuantity;
+    private ArrayList<Table> savedTables;
     private ArrayList<PlateOrder> ordersToSend;
     private ArrayList<String> ordersToSendStringArray;
     private ArrayList<PlateOrder> servedPlates;
-    private float billAmount;
+    private BigDecimal billAmount;
 
     /**
      * Creates new form Main
@@ -79,9 +83,12 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         setLocationRelativeTo(null);
         this.ordersSentCheckbox.setEnabled(false);
         this.ordersReadyCheckbox.setEnabled(false);
+        this.servedPlatesList.setModel(new DefaultListModel<>());
+        this.billAmount = new BigDecimal("0");
     }
     
     private void populateData() {
+        this.savedTables = new ArrayList<>();
         this.ordersToSend = new ArrayList<>();
         this.ordersToSendStringArray = new ArrayList<>();
         this.servedPlates = new ArrayList<>();
@@ -130,7 +137,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.dessertsQuantityTextfield.addKeyListener(this);
         this.drinksAddButton.addKeyListener(this);
         this.drinksAmountTextfield.addKeyListener(this);
-        this.orderPlatesButton.addKeyListener(this);
+        this.platesOrderButton.addKeyListener(this);
         this.ordersReadyCheckbox.addKeyListener(this);
         this.ordersSendButton.addKeyListener(this);
         this.ordersSentCheckbox.addKeyListener(this);
@@ -292,14 +299,14 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         billLabel = new javax.swing.JLabel();
         billPaidStateLabel = new javax.swing.JLabel();
         billPayButton = new javax.swing.JButton();
-        plateOrdersLabel = new javax.swing.JLabel();
+        platesOrdersLabel = new javax.swing.JLabel();
         platesLabel = new javax.swing.JLabel();
         platesCombobox = new javax.swing.JComboBox<>();
         platesQuantityLabel = new javax.swing.JLabel();
         platesQuantityTextfield = new javax.swing.JTextField();
         platesCommentTextfield = new javax.swing.JTextField();
         platesCommentsLabel = new javax.swing.JLabel();
-        orderPlatesButton = new javax.swing.JButton();
+        platesOrderButton = new javax.swing.JButton();
         dessertsLabel = new javax.swing.JLabel();
         dessertsCombobox = new javax.swing.JComboBox<>();
         dessertsQuantityLabel = new javax.swing.JLabel();
@@ -321,6 +328,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
         tableLabel.setText("Table:");
 
+        tableCombobox.addItemListener(new java.awt.event.ItemListener() {
+            public void itemStateChanged(java.awt.event.ItemEvent evt) {
+                tableComboboxItemStateChanged(evt);
+            }
+        });
         tableCombobox.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 tableComboboxActionPerformed(evt);
@@ -353,26 +365,25 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
         billPayButton.setText("Pay");
 
-        plateOrdersLabel.setText("Plate orders:");
+        platesOrdersLabel.setText("Plate orders:");
 
         platesLabel.setText("Plates:");
-
-        platesCombobox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                platesComboboxActionPerformed(evt);
-            }
-        });
 
         platesQuantityLabel.setText("Quantity:");
 
         platesQuantityTextfield.setText("X");
+        platesQuantityTextfield.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                platesQuantityTextfieldActionPerformed(evt);
+            }
+        });
 
         platesCommentsLabel.setText("Comments:");
 
-        orderPlatesButton.setText("Order plates");
-        orderPlatesButton.addActionListener(new java.awt.event.ActionListener() {
+        platesOrderButton.setText("Order plates");
+        platesOrderButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                orderPlatesButtonActionPerformed(evt);
+                platesOrderButtonActionPerformed(evt);
             }
         });
 
@@ -466,7 +477,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                             .addGroup(layout.createSequentialGroup()
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
                                     .addComponent(platesLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                                    .addComponent(plateOrdersLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 193, Short.MAX_VALUE)
+                                    .addComponent(platesOrdersLabel, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 193, Short.MAX_VALUE)
                                     .addComponent(platesCommentsLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                                 .addGap(18, 18, 18)
                                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
@@ -479,7 +490,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                                 .addComponent(dessertsQuantityLabel)
                                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                                 .addComponent(dessertsQuantityTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, 50, javax.swing.GroupLayout.PREFERRED_SIZE))
-                            .addComponent(orderPlatesButton, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(platesOrderButton, javax.swing.GroupLayout.PREFERRED_SIZE, 155, javax.swing.GroupLayout.PREFERRED_SIZE)
                             .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
                                 .addComponent(platesQuantityLabel)
                                 .addGap(37, 37, 37)
@@ -509,38 +520,33 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(54, 54, 54)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(billPayButton)
-                                    .addComponent(billPaidStateLabel)
-                                    .addComponent(billAmountLabel)
-                                    .addComponent(billLabel)))
-                            .addComponent(drinksAddButton))
-                        .addGap(33, 33, 33))
+                        .addGap(54, 54, 54)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(billPayButton)
+                            .addComponent(billPaidStateLabel)
+                            .addComponent(billAmountLabel)
+                            .addComponent(billLabel)))
+                    .addComponent(drinksAddButton)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addGroup(layout.createSequentialGroup()
-                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(tableLabel)
-                                    .addComponent(tableCombobox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                    .addComponent(servedPlatesLabel))
-                                .addGap(18, 18, 18)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(maxCoversLabel)
-                                    .addComponent(maxCoversValueLabel))
-                                .addGap(18, 18, 18)
-                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                    .addComponent(effectiveCoversLabel)
-                                    .addComponent(effectiveCoversValueLabel)))
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                                .addComponent(drinksAmountTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(eurLabel)
-                                .addComponent(drinksLabel)))
-                        .addGap(25, 25, 25)))
-                .addComponent(plateOrdersLabel)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(tableLabel)
+                            .addComponent(tableCombobox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(servedPlatesLabel))
+                        .addGap(18, 18, 18)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(maxCoversLabel)
+                            .addComponent(maxCoversValueLabel))
+                        .addGap(18, 18, 18)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                            .addComponent(effectiveCoversLabel)
+                            .addComponent(effectiveCoversValueLabel)))
+                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(drinksAmountTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(eurLabel)
+                        .addComponent(drinksLabel)))
+                .addGap(25, 25, 25)
+                .addComponent(platesOrdersLabel)
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(platesLabel)
@@ -551,7 +557,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(platesCommentTextfield, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(platesCommentsLabel)
-                    .addComponent(orderPlatesButton))
+                    .addComponent(platesOrderButton))
                 .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(dessertsCombobox, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -586,17 +592,16 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.maxCoversValueLabel.setText(String.valueOf(this.selectedTable.getMaxCovers()));
     }//GEN-LAST:event_tableComboboxActionPerformed
 
-    private void platesComboboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesComboboxActionPerformed
+    private void platesOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesOrderButtonActionPerformed
+        this.orderPlate();
+    }//GEN-LAST:event_platesOrderButtonActionPerformed
 
-    }//GEN-LAST:event_platesComboboxActionPerformed
-
-    private void orderPlatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_orderPlatesButtonActionPerformed
+    private void orderPlate() {
         int plateQuantityInput = 0;
         try {
             plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
         
-        
-            if (plateQuantityInput < 0) {
+            if (plateQuantityInput <= 0) {
                 JOptionPane.showMessageDialog(this,
                     "The plate quantity must be positive",
                     "Invalid quantity",
@@ -608,7 +613,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 throw new TooManyCoversException(plateQuantityInput, this.selectedTable.getMaxCovers());
             }
             
-            this.orderPlate();
+            this.orderCurrentPlate();
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -642,16 +647,17 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
             
-            this.orderPlate();
+            this.orderCurrentPlate();
         }
-    }//GEN-LAST:event_orderPlatesButtonActionPerformed
+    }
 
-    private void orderPlate() {
+    private void orderCurrentPlate() {
         Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
         int plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
-        
+
         PlateOrder order = new PlateOrder(selectedPlate, plateQuantityInput);
         this.ordersToSend.add(order);
+        this.selectedTable.addOrder(order);
         this.ordersToSendStringArray.add(
             plateQuantityInput + " " +
             ((MainCourse)order.getPlate()).getCode() + ": " +
@@ -664,7 +670,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         
         this.plateQuantity += plateQuantityInput;
         this.effectiveCoversValueLabel.setText(String.valueOf(this.plateQuantity));
-        this.billAmount += plateQuantityInput * order.getPlate().getPrice();
+        this.billAmount = this.billAmount.add(
+            new BigDecimal(plateQuantityInput).multiply(
+            new BigDecimal(order.getPlate().getPrice())))
+            // Round to the nearest value (2 digits).
+            // Rounding seems to be needed by law
+            // src.: https://introcs.cs.princeton.edu/java/91float/
+            .setScale(2, RoundingMode.HALF_EVEN);
         this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
     }
     
@@ -674,6 +686,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         
         PlateOrder order = new PlateOrder(selectedPlate, dessertQuantityInput);
         this.ordersToSend.add(order);
+        this.selectedTable.addOrder(order);
         this.ordersToSendStringArray.add(
             dessertQuantityInput + " " +
             ((Dessert)order.getPlate()).getCode() + ": " +
@@ -685,7 +698,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             this.ordersToSendStringArray.toArray(new String[this.ordersToSendStringArray.size()]));
         
         this.dessertQuantity += dessertQuantityInput;
-        this.billAmount += dessertQuantityInput * order.getPlate().getPrice();
+        this.billAmount = this.billAmount.add(
+            new BigDecimal(dessertQuantityInput).multiply(
+            new BigDecimal(Double.toString(order.getPlate().getPrice())))
+            .setScale(2, RoundingMode.HALF_EVEN));
         this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
     }
     
@@ -694,7 +710,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         try {
             dessertQuantityInput = Integer.parseInt(this.dessertsQuantityTextfield.getText());
         
-            if (dessertQuantityInput < 0) {
+            if (dessertQuantityInput <= 0) {
                 JOptionPane.showMessageDialog(this,
                     "The dessert quantity must be positive",
                     "Invalid quantity",
@@ -727,6 +743,17 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.ordersToSend.clear();
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
+    private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
+        if (evt.getStateChange() == ItemEvent.SELECTED) {
+            this.selectedTable = this.tables.get(this.tableCombobox.getSelectedItem().toString());
+            System.out.println("New table selected | number: " + this.selectedTable.getNumber() + " | waiter: " + this.selectedTable.getWaiterName());
+        }
+    }//GEN-LAST:event_tableComboboxItemStateChanged
+
+    private void platesQuantityTextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesQuantityTextfieldActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_platesQuantityTextfieldActionPerformed
+
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel billAmountLabel;
@@ -751,17 +778,17 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JLabel maxCoversLabel;
     private javax.swing.JLabel maxCoversValueLabel;
-    private javax.swing.JButton orderPlatesButton;
     private javax.swing.JCheckBox ordersReadyCheckbox;
     private javax.swing.JButton ordersSendButton;
     private javax.swing.JCheckBox ordersSentCheckbox;
     private javax.swing.JLabel ordersToSendLabel;
     private javax.swing.JList<String> ordersToSendList;
-    private javax.swing.JLabel plateOrdersLabel;
     private javax.swing.JComboBox<String> platesCombobox;
     private javax.swing.JTextField platesCommentTextfield;
     private javax.swing.JLabel platesCommentsLabel;
     private javax.swing.JLabel platesLabel;
+    private javax.swing.JButton platesOrderButton;
+    private javax.swing.JLabel platesOrdersLabel;
     private javax.swing.JLabel platesQuantityLabel;
     private javax.swing.JTextField platesQuantityTextfield;
     private javax.swing.JButton readAvailablePlatesButton;
@@ -779,6 +806,12 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     public void keyPressed(KeyEvent ke) {
         if (ke.getKeyCode() == KeyEvent.VK_ESCAPE) {
             this.quitApplicationWithConfirm();
+        } else if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+            if (ke.getSource() == this.platesQuantityTextfield) {
+                this.orderPlate();
+            } else if (ke.getSource() == this.dessertsQuantityTextfield) {
+                this.orderDessert();
+            }
         }
     }
 
