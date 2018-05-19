@@ -358,6 +358,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         eurLabel.setText("EUR");
 
         drinksAddButton.setText("Add");
+        drinksAddButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                drinksAddButtonActionPerformed(evt);
+            }
+        });
 
         billLabel.setText("Bill:");
 
@@ -678,6 +683,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             // src.: https://introcs.cs.princeton.edu/java/91float/
             .setScale(2, RoundingMode.HALF_EVEN);
         this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
+
+        this.ordersSentCheckbox.setSelected(false);
     }
     
     private void orderDessert() {
@@ -703,6 +710,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             new BigDecimal(Double.toString(order.getPlate().getPrice())))
             .setScale(2, RoundingMode.HALF_EVEN));
         this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
+
+        this.ordersSentCheckbox.setSelected(false);
     }
     
     private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
@@ -741,6 +750,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.ordersToSendList.setModel(new DefaultListModel<>());
         this.ordersToSendStringArray.clear();
         this.ordersToSend.clear();
+
+        this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
@@ -754,6 +765,46 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         // TODO add your handling code here:
     }//GEN-LAST:event_platesQuantityTextfieldActionPerformed
 
+    private void drinksAddButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_drinksAddButtonActionPerformed
+        this.orderDrinks();
+    }//GEN-LAST:event_drinksAddButtonActionPerformed
+
+    private void orderDrinks() {
+        try {
+            double drinksAmount = Double.parseDouble(this.drinksAmountTextfield.getText());
+
+            if (drinksAmount <= 0) {
+                JOptionPane.showMessageDialog(this,
+                    "The drinks amount must be positive",
+                    "Invalid drinks amount",
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            String drinkLine;
+            if (this.plateQuantity > 0) {
+                if (this.plateQuantity == 1) {
+                    drinkLine = "Drinks with plate (" + drinksAmount + ")";
+                } else {
+                    drinkLine = "Drinks with plates (" + drinksAmount + ")";
+                }
+            } else {
+                drinkLine = "Drinks without plate (" + drinksAmount + ")";
+            }
+
+            ((DefaultListModel<String>)this.servedPlatesList.getModel()).addElement(drinkLine);
+
+            this.billAmount = this.billAmount.add(
+                new BigDecimal(drinksAmount).setScale(2, RoundingMode.HALF_EVEN));
+            this.billAmountLabel.setText(String.valueOf(
+                this.billAmount + " " + this.currencySymbol));
+        } catch (NumberFormatException e) {
+            JOptionPane.showMessageDialog(this,
+                "The drinks amount must be a valid number",
+                "Invalid drinks amount",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel billAmountLabel;
@@ -811,6 +862,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 this.orderPlate();
             } else if (ke.getSource() == this.dessertsQuantityTextfield) {
                 this.orderDessert();
+            } else if (ke.getSource() == this.drinksAmountTextfield) {
+                this.orderDrinks();
             }
         }
     }
