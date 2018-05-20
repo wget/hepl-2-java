@@ -17,8 +17,10 @@
 package be.wget.inpres.java.restaurantroommanager.guis;
 
 import be.wget.inpres.java.restaurant.dataobjects.Dessert;
+import be.wget.inpres.java.restaurant.dataobjects.Drink;
 import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
 import be.wget.inpres.java.restaurant.dataobjects.Plate;
+import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurantroommanager.TooManyCoversException;
@@ -35,7 +37,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
-import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
 /**
@@ -44,25 +45,21 @@ import javax.swing.JOptionPane;
  */
 public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyListener {
 
+    private final String applicationName = "Restaurant Room Manager \"Le gourmet audatieux\"";
+    private final String currencySymbol = "EUR";
+
     // Hashtable is deprecated, let's use a Hashmap instead.
     private HashMap<String, String> credentials;
     private HashMap<String, Table> tables;
     private ArrayList<MainCourse> defaultMainCourses;
     private ArrayList<Dessert> defaultDesserts;
-    
-    private final String applicationName = "Restaurant Room Manager \"Le gourmet audatieux\"";
-    private final String currencySymbol = "EUR";
-    
-    private String waiterName;
-    private Table selectedTable;
-    private int platesQuantity;
-    private int dessertQuantity;
     private ArrayList<Table> savedTables;
     private ArrayList<PlateOrder> ordersToSend;
-    private ArrayList<String> ordersToSendStringArray;
-    private ArrayList<PlateOrder> servedPlates;
+    private Table currentTable;
+    private int selectedTableIndex;
     private BigDecimal billAmount;
-    private boolean billPaid;
+    private DefaultListModel<String> ordersToSendListModel;
+    private DefaultListModel<String> servedPlatesListModel;
 
     /**
      * Creates new form Main
@@ -70,31 +67,64 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     public RestaurantRoomManagerGui() {
 
         initComponents();
+
         // Additional GUI customizations
         this.initAdditionalComponents();
         this.initUXEvents();
 
         this.populateData();
-        this.populateGui();
+        this.initApplicationGui();
         
-        this.verifyUserCredentials();
+        LoginGui login = new LoginGui(this, true);
+        while (true) {
+            login.setVisible(true);
+            if (login.isDialogCancelled()) {
+                System.exit(1);
+            }
+
+            String hashedPassword = this.credentials.get(login.getUsername());
+            if (hashedPassword == null) {
+                JOptionPane.showMessageDialog(getParent(),
+                    "Unable to find the user \""
+                    + login.getUsername()
+                    + "\". Quitting.",
+                    this.applicationName,
+                    JOptionPane.ERROR_MESSAGE);
+                System.exit(0);
+            }
+
+            if (!hashedPassword.equals(this.getSha512FromPassword(login.getPassword()))) {
+                JOptionPane.showMessageDialog(getParent(),
+                    "The password for the user \""
+                    + login.getUsername()
+                    + " \"is incorrect. Quitting.",
+                    this.applicationName,
+                    JOptionPane.ERROR_MESSAGE);
+                System.exit(0);
+            }
+            break;
+        }
+        this.currentTable.setWaiterName(login.getUsername());
+        login.dispose();
+        this.setTitle(this.applicationName + ": " + this.currentTable.getWaiterName());
     }
     
     private void initAdditionalComponents() {
-        this.setTitle(this.applicationName + ": " + waiterName);
+        this.setTitle(this.applicationName);
         this.setLocationRelativeTo(null);
         this.ordersSentCheckbox.setEnabled(false);
         this.ordersReadyCheckbox.setEnabled(false);
-        this.servedPlatesList.setModel(new DefaultListModel<>());
+        this.ordersToSendListModel = new DefaultListModel<>();
+        this.ordersToSendList.setModel(this.ordersToSendListModel);
+        this.servedPlatesListModel = new DefaultListModel<>();
+        this.servedPlatesList.setModel(servedPlatesListModel);
+        this.selectedTableIndex = 0;
         this.billAmount = new BigDecimal("0");
-        this.billPaid = false;
     }
     
     private void populateData() {
         this.savedTables = new ArrayList<>();
         this.ordersToSend = new ArrayList<>();
-        this.ordersToSendStringArray = new ArrayList<>();
-        this.servedPlates = new ArrayList<>();
         
         // FIXME: Hardcoded credentials
         this.credentials = new HashMap<>();
@@ -133,7 +163,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }
     
     private void initUXEvents() {
-        this.billPayButton.addKeyListener(this);
+        this.billCheckoutButton.addKeyListener(this);
         this.dessertsCombobox.addKeyListener(this);
         this.dessertsCommentsTextfield.addKeyListener(this);
         this.dessertsOrderButton.addKeyListener(this);
@@ -151,7 +181,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.tableCombobox.addKeyListener(this);
     }
     
-    private void populateGui() {
+    private void initApplicationGui() {
         // Populate the combobox of restaurant tables
         // toArray() returns an array of objets, we need an array of strings
         // first in order to be able to sort the table alphabetically.
@@ -179,6 +209,9 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.dessertsCombobox.setModel(new DefaultComboBoxModel<>(
             (String[])dessertNames.toArray(new String[dessertNames.size()]))); 
         
+        this.currentTable = tables.get(this.tableCombobox.getSelectedItem().toString());
+        this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
+
         // The getSelection on combobox is only populated when there has been
         // previously a selection. By default, when the app is launched, while
         // the selected item is the first of the combobox, the app assumes
@@ -187,45 +220,6 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.tableCombobox.setSelectedIndex(0);
         this.platesCombobox.setSelectedIndex(0);
         this.dessertsCombobox.setSelectedIndex(0);
-    }
-    
-    private void verifyUserCredentials() {
-        LoginGui login = new LoginGui(this, true, this.applicationName);
-        
-        while (true) {
-            
-            login.setVisible(true);
-            
-            if (login.isDialogCancelled()) {
-                System.exit(0);
-            }
-            
-            String hashedPassword = this.credentials.get(login.getUsername());
-        
-            if (hashedPassword == null) {
-                JOptionPane.showMessageDialog(getParent(),
-                    "Unable to find the user \""
-                    + login.getUsername()
-                    + "\". Quitting.",
-                    "Restaurant Room Manager",
-                    JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
-            }
-            this.waiterName = login.getUsername();
-
-            if (!hashedPassword.equals(this.getSha512FromPassword(login.getPassword()))) {
-                JOptionPane.showMessageDialog(getParent(),
-                    "The password for the user \""
-                    + login.getUsername()
-                    + " \"is incorrect. Retry.",
-                    "Restaurant Room Manager",
-                    JOptionPane.ERROR_MESSAGE);
-                continue;
-            }
-            
-            break;
-        }
-        login.dispose();
     }
     
     private String getSha512FromPassword(String password) {
@@ -237,7 +231,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             byte byteData[] = md.digest();
             
             StringBuilder hexString = new StringBuilder();
-            for (int i = 0; i<byteData.length; i++) {
+            for (int i = 0; i < byteData.length; i++) {
                 String hex = Integer.toHexString(0xff & byteData[i]);
                 if (hex.length() == 1){
                     hexString.append('0');
@@ -301,7 +295,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         drinksAddButton = new javax.swing.JButton();
         billLabel = new javax.swing.JLabel();
         billPaidStateLabel = new javax.swing.JLabel();
-        billPayButton = new javax.swing.JButton();
+        billCheckoutButton = new javax.swing.JButton();
         platesOrdersLabel = new javax.swing.JLabel();
         platesLabel = new javax.swing.JLabel();
         platesCombobox = new javax.swing.JComboBox<>();
@@ -336,11 +330,6 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 tableComboboxItemStateChanged(evt);
             }
         });
-        tableCombobox.addActionListener(new java.awt.event.ActionListener() {
-            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                tableComboboxActionPerformed(evt);
-            }
-        });
 
         maxCoversLabel.setText("Max covers:");
 
@@ -371,10 +360,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
         billPaidStateLabel.setText("NOT PAID");
 
-        billPayButton.setText("Checkout");
-        billPayButton.addActionListener(new java.awt.event.ActionListener() {
+        billCheckoutButton.setText("Checkout");
+        billCheckoutButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                billPayButtonActionPerformed(evt);
+                billCheckoutButtonActionPerformed(evt);
             }
         });
 
@@ -483,7 +472,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                         .addGap(18, 18, 18)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
                             .addComponent(drinksAddButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                            .addComponent(billPayButton, javax.swing.GroupLayout.DEFAULT_SIZE, 106, Short.MAX_VALUE)))
+                            .addComponent(billCheckoutButton, javax.swing.GroupLayout.DEFAULT_SIZE, 106, Short.MAX_VALUE)))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                             .addComponent(dessertsCombobox, javax.swing.GroupLayout.PREFERRED_SIZE, 543, javax.swing.GroupLayout.PREFERRED_SIZE)
@@ -535,7 +524,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     .addGroup(layout.createSequentialGroup()
                         .addGap(54, 54, 54)
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(billPayButton)
+                            .addComponent(billCheckoutButton)
                             .addComponent(billPaidStateLabel)
                             .addComponent(billAmountLabel)
                             .addComponent(billLabel)))
@@ -600,11 +589,6 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void tableComboboxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_tableComboboxActionPerformed
-        this.selectedTable = tables.get(this.tableCombobox.getSelectedItem().toString());
-        this.maxCoversValueLabel.setText(String.valueOf(this.selectedTable.getMaxCovers()));
-    }//GEN-LAST:event_tableComboboxActionPerformed
-
     private void platesOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesOrderButtonActionPerformed
         this.orderPlate();
     }//GEN-LAST:event_platesOrderButtonActionPerformed
@@ -622,8 +606,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
 
-            if (this.platesQuantity + plateQuantityInput > this.selectedTable.getMaxCovers()) {
-                throw new TooManyCoversException(plateQuantityInput, this.selectedTable.getMaxCovers());
+            if (this.currentTable.getEffectiveCovers()
+                + plateQuantityInput > this.currentTable.getMaxCovers()) {
+                throw new TooManyCoversException(
+                    plateQuantityInput,
+                    this.currentTable.getMaxCovers());
             }
             
             this.orderCurrentPlate();
@@ -634,13 +621,32 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 "Invalid quantity",
                 JOptionPane.ERROR_MESSAGE); 
         } catch (TooManyCoversException ex) {
+            String noButtonText;
+            String yesButtonText;
+            String questionText;
+            if (this.currentTable.getEffectiveCovers() == 0) {
+                noButtonText = "No, keep no cover";
+            } else if (this.currentTable.getEffectiveCovers() == 1) {
+                noButtonText = "No, keep my existing cover";
+            } else {
+                noButtonText = "No, keep my existing " +
+                    this.currentTable.getEffectiveCovers() + " covers";
+            }
+            if (plateQuantityInput == 1) {
+                questionText = "Do you really want to add one additional cover?";
+                yesButtonText = "Yes, add one additional cover";
+            } else {
+                questionText = "Do you really want to add " + plateQuantityInput + " additional covers?";
+                yesButtonText = "Yes, add " + plateQuantityInput + " additional covers";
+            }
+
             Object[] options = {
-                "No, keep my existing " + this.platesQuantity + " covers",
-                "Yes, add " + plateQuantityInput + " additional covers"
+                noButtonText,
+                yesButtonText
             };
             int answer = JOptionPane.showOptionDialog(
                 this,
-                "Do you really want to add " + plateQuantityInput + " additional covers?",
+                questionText,
                 "Too much covers",
                 JOptionPane.YES_NO_OPTION,
                 JOptionPane.QUESTION_MESSAGE,
@@ -659,7 +665,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 answer == JOptionPane.YES_OPTION) {
                 return;
             }
-            
+
             this.orderCurrentPlate();
         }
     }
@@ -667,58 +673,58 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private void orderCurrentPlate() {
         Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
         int plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
-
-        PlateOrder order = new PlateOrder(selectedPlate, plateQuantityInput);
-        this.ordersToSend.add(order);
-        this.selectedTable.addOrder(order);
-        this.ordersToSendStringArray.add(
-            plateQuantityInput + " " +
-            ((MainCourse)order.getPlate()).getCode() + ": " +
-            order.getPlate().getLabel() + " (" +
-            Float.valueOf(new DecimalFormat("#.##").format(
-                plateQuantityInput * order.getPlate().getPrice()))
-                + " " + this.currencySymbol + ")");
-        this.ordersToSendList.setListData(
-            this.ordersToSendStringArray.toArray(new String[this.ordersToSendStringArray.size()]));
         
-        this.platesQuantity += plateQuantityInput;
-        this.effectiveCoversValueLabel.setText(String.valueOf(this.platesQuantity));
+        // Update model
+        this.ordersToSend.add(new PlateOrder(selectedPlate, plateQuantityInput));
+        this.currentTable.setEffectiveCovers(
+            this.currentTable.getEffectiveCovers() + plateQuantityInput);
         this.billAmount = this.billAmount.add(
             new BigDecimal(plateQuantityInput).multiply(
-            new BigDecimal(order.getPlate().getPrice())))
+            new BigDecimal(selectedPlate.getPrice())))
             // Round to the nearest value (2 digits).
             // Rounding seems to be needed by law
             // src.: https://introcs.cs.princeton.edu/java/91float/
             .setScale(2, RoundingMode.HALF_EVEN);
-        this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
+        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
+        // Update UI
+        this.ordersToSendListModel.addElement(
+            plateQuantityInput + " " +
+            ((MainCourse)selectedPlate).getCode() + ": " +
+            selectedPlate.getLabel() + " (" +
+            Float.valueOf(new DecimalFormat("#.##").format(
+                plateQuantityInput * selectedPlate.getPrice()))
+                + " " + this.currencySymbol + ")"
+        );
+        this.effectiveCoversValueLabel.setText(
+            String.valueOf(this.currentTable.getEffectiveCovers()));
+        this.billAmountLabel.setText(
+            String.valueOf(this.billAmount + " " + this.currencySymbol));
         this.ordersSentCheckbox.setSelected(false);
     }
     
     private void orderDessert() {
         Plate selectedPlate = this.defaultDesserts.get(this.dessertsCombobox.getSelectedIndex());
         int dessertQuantityInput = Integer.parseInt(this.dessertsQuantityTextfield.getText());
-        
-        PlateOrder order = new PlateOrder(selectedPlate, dessertQuantityInput);
-        this.ordersToSend.add(order);
-        this.selectedTable.addOrder(order);
-        this.ordersToSendStringArray.add(
-            dessertQuantityInput + " " +
-            ((Dessert)order.getPlate()).getCode() + ": " +
-            order.getPlate().getLabel() + " (" +
-            Float.valueOf(new DecimalFormat("#.##").format(
-                dessertQuantityInput * order.getPlate().getPrice()))
-                + " " + this.currencySymbol + ")");
-        this.ordersToSendList.setListData(
-            this.ordersToSendStringArray.toArray(new String[this.ordersToSendStringArray.size()]));
-        
-        this.dessertQuantity += dessertQuantityInput;
+
+        // Update model
+        this.ordersToSend.add(new PlateOrder(selectedPlate, dessertQuantityInput));
         this.billAmount = this.billAmount.add(
             new BigDecimal(dessertQuantityInput).multiply(
-            new BigDecimal(Double.toString(order.getPlate().getPrice())))
+            new BigDecimal(Double.toString(selectedPlate.getPrice())))
             .setScale(2, RoundingMode.HALF_EVEN));
-        this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
+        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
+        // Update UI
+        this.ordersToSendListModel.addElement(
+            dessertQuantityInput + " " +
+            ((Dessert)selectedPlate).getCode() + ": " +
+            selectedPlate.getLabel() + " (" +
+            Float.valueOf(new DecimalFormat("#.##").format(
+                dessertQuantityInput * selectedPlate.getPrice()))
+                + " " + this.currencySymbol + ")"
+        );
+        this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
         this.ordersSentCheckbox.setSelected(false);
     }
     
@@ -746,28 +752,206 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }//GEN-LAST:event_dessertsOrderButtonActionPerformed
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
-        this.ordersToSendStringArray.forEach((plateToSend) -> {
-            ((DefaultListModel<String>)this.servedPlatesList.getModel()).addElement((String)plateToSend);
-        });
+        for (int i = 0; i < this.ordersToSendListModel.size(); i++) {
+            this.servedPlatesListModel.addElement(ordersToSendListModel.get(i));
+        }
 
-        for (PlateOrder order: ordersToSend) {
-            this.servedPlates.add(order);
+        for (PlateOrder order: this.ordersToSend) {
+            this.currentTable.addOrder(order);
             // Effective sending to the other application (socket, IPC, whatever).
             System.out.println("Sending " + order.getQuantity() + "x " + order.getPlate().getLabel());
         }
-        this.ordersToSendList.setModel(new DefaultListModel<>());
-        this.ordersToSendStringArray.clear();
+        this.ordersToSendListModel.clear();
         this.ordersToSend.clear();
 
         this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
-        if (evt.getStateChange() == ItemEvent.SELECTED) {
-            this.selectedTable = this.tables.get(this.tableCombobox.getSelectedItem().toString());
-            System.out.println("New table selected | number: " + this.selectedTable.getNumber() + " | waiter: " + this.selectedTable.getWaiterName());
+        if (evt.getStateChange() != ItemEvent.SELECTED ||
+            evt.getSource() != this.tableCombobox) {
+            return;
+        }
+
+        // If this is the same table (because the user has cancelled the
+        // table switch, there is no need to repopulate in-memory objects.
+        if (this.tableCombobox.getSelectedIndex() == this.selectedTableIndex) {
+            return;
+        }
+
+        this.saveCurrentTable();
+
+        // Ask the user if he wants to change the current waiter
+        WaiterChangeQuestionGui waiterChangeGui =
+            new WaiterChangeQuestionGui(this, true);
+        waiterChangeGui.setWaiterName(this.currentTable.getWaiterName());
+        waiterChangeGui.setVisible(true);
+
+        // Backup the current waiter name before changing the table, otherwise
+        // we will lose access to it after the table switch.
+        String currentWaiterName = this.currentTable.getWaiterName();
+
+        if (waiterChangeGui.isWaiterChanging()) {
+
+            LoginGui login = new LoginGui(this, true);
+            while (true) {
+                login.setVisible(true);
+                if (login.isDialogCancelled()) {
+                    break;
+                }
+
+                String hashedPassword = this.credentials.get(login.getUsername());
+                if (hashedPassword == null) {
+                    JOptionPane.showMessageDialog(getParent(),
+                        "Unable to find the user \""
+                        + login.getUsername()
+                        + "\". Retry.",
+                        this.applicationName,
+                        JOptionPane.ERROR_MESSAGE);
+                    continue;
+                }
+
+                if (!hashedPassword.equals(this.getSha512FromPassword(login.getPassword()))) {
+                    JOptionPane.showMessageDialog(getParent(),
+                        "The password for the user \""
+                        + login.getUsername()
+                        + " \"is incorrect. Retry.",
+                        this.applicationName,
+                        JOptionPane.ERROR_MESSAGE);
+                    continue;
+                }
+                // Change the waiter
+                this.currentTable.setWaiterName(login.getUsername());
+                this.setTitle(this.applicationName + ": " + this.currentTable.getWaiterName());
+
+                login.dispose();
+                break;
+            }
+        }
+        waiterChangeGui.dispose();
+
+        // Recover the previous state of the table if any
+        String newTableNumber = this.tableCombobox.getSelectedItem().toString();
+        boolean tableFound = false;
+        int tableIndex = 0;
+        while (tableIndex < this.savedTables.size()) {
+            if (newTableNumber == this.savedTables.get(tableIndex).getNumber()) {
+                tableFound = true;
+                break;
+            }
+            tableIndex++;
+        }
+        if (tableFound) {
+            this.currentTable = this.savedTables.get(tableIndex);
+        } else {
+            this.currentTable = this.tables.get(newTableNumber);
+        }
+
+        // Update model with new table info
+        this.currentTable.setWaiterName(currentWaiterName);
+        this.selectedTableIndex = this.tableCombobox.getSelectedIndex();
+
+        // Update UI
+        // Clean GUI of values from previous table
+        this.ordersToSendListModel.clear();
+        this.ordersToSend.clear();
+        this.servedPlatesListModel.clear();
+        // Populate UI with the values of the new table
+        this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
+        this.effectiveCoversValueLabel.setText(String.valueOf(this.currentTable.getEffectiveCovers()));
+        for (PlateOrder order: this.currentTable.getOrders()) {
+            if (order.getPlate() instanceof MainCourse ||
+                order.getPlate() instanceof Dessert) {
+                String code;
+                if (order.getPlate() instanceof MainCourse) {
+                    code = ((MainCourse)order.getPlate()).getCode();
+                } else {
+                    code = ((Dessert)order.getPlate()).getCode();
+                }
+
+                this.servedPlatesListModel.addElement(
+                    order.getQuantity() + " " +
+                    code + ": " +
+                    order.getPlate().getLabel() + " (" +
+                    Float.valueOf(new DecimalFormat("#.##").format(
+                        order.getQuantity() * order.getPlate().getPrice()))
+                        + " " + this.currencySymbol + ")"
+                );
+            } else {
+                this.servedPlatesListModel.addElement(
+                    order.getQuantity() + " " +
+                    order.getPlate().getLabel() + " (" +
+                    Float.valueOf(new DecimalFormat("#.##").format(
+                        order.getQuantity() * order.getPlate().getPrice()))
+                        + " " + this.currencySymbol + ")"
+                );
+            }
+        }
+        this.billAmountLabel.setText(String.valueOf(this.currentTable.getBillAmount()));
+        if (this.currentTable.isBillPaid()) {
+            this.billPaidStateLabel.setText("PAID");
+        } else {
+            this.billPaidStateLabel.setText("NOT PAID");
         }
     }//GEN-LAST:event_tableComboboxItemStateChanged
+
+    private void saveCurrentTable() {
+        if (this.ordersToSend.size() > 0) {
+            Object[] options = {
+                "No, cancel",
+                "Yes, change table and loose my non sent orders"
+            };
+            String remainingToSend;
+            if (this.ordersToSend.size() == 1) {
+                remainingToSend = "There is one order that hasn't been sent yet. Changing table will loose them. Do you want to change table?";
+            } else {
+                remainingToSend = "There are " + this.ordersToSend.size() + " orders that haven't been sent yet. Changing table will loose them. Do you want to change table?";
+            }
+
+            int answer = JOptionPane.showOptionDialog(
+                this,
+                remainingToSend,
+                "Orders not sent",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE,
+                // Do not use a custom Icon.
+                null,
+                // Specifies the titles of the buttons.
+                options,
+                // Use default button title.
+                options[1]);
+
+            // Cancel the table switch
+            if (answer == JOptionPane.CLOSED_OPTION ||
+                // Don't forget the YES and NO constant are inverted because
+                // we really wanted to have the No statement at the left
+                // while Swing uses Yes at the right
+                answer == JOptionPane.YES_OPTION) {
+
+                // Reselect previous table in the combobox item.
+                // This has as effect to retrigger this ItemEvent.
+                this.tableCombobox.setSelectedIndex(this.selectedTableIndex);
+                return;
+            }
+        }
+
+        // Save the current table
+        boolean tableFound = false;
+        int tableIndex = 0;
+        while (tableIndex < this.savedTables.size()) {
+            if (this.currentTable.getNumber().equals(
+                this.savedTables.get(tableIndex).getNumber())) {
+                tableFound = true;
+                break;
+            }
+            tableIndex++;
+        }
+        if (tableFound) {
+            this.savedTables.set(tableIndex, this.currentTable);
+        } else {
+            this.savedTables.add(this.currentTable);
+        }
+    }
 
     private void platesQuantityTextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesQuantityTextfieldActionPerformed
         // TODO add your handling code here:
@@ -777,19 +961,19 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.orderDrinks();
     }//GEN-LAST:event_drinksAddButtonActionPerformed
 
-    private void billPayButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_billPayButtonActionPerformed
+    private void billCheckoutButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_billCheckoutButtonActionPerformed
         BillGui billDialog = new BillGui(this, true);
         billDialog.setTable(this.tableCombobox.getSelectedItem().toString());
         billDialog.setBillAmount(this.billAmount);
-        billDialog.setPlatesQuantity(this.platesQuantity);
-        billDialog.setBillPaidState(this.billPaid);
+        billDialog.setPlatesQuantity(this.currentTable.getEffectiveCovers());
+        billDialog.setBillPaidState(this.currentTable.isBillPaid());
         billDialog.setVisible(true);
-        this.billPaid = billDialog.getPaymentDetails();
-        if (billPaid) {
+        if (billDialog.getPaymentDetails()) {
+            this.currentTable.setBillPaid();
             this.billPaidStateLabel.setText("PAID");
         }
         billDialog.dispose();
-    }//GEN-LAST:event_billPayButtonActionPerformed
+    }//GEN-LAST:event_billCheckoutButtonActionPerformed
 
     private void orderDrinks() {
         try {
@@ -804,8 +988,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             }
 
             String drinkLine;
-            if (this.platesQuantity > 0) {
-                if (this.platesQuantity == 1) {
+            if (this.currentTable.getEffectiveCovers() > 0) {
+                if (this.currentTable.getEffectiveCovers() == 1) {
                     drinkLine = "Drinks with plate (" + drinksAmount + ")";
                 } else {
                     drinkLine = "Drinks with plates (" + drinksAmount + ")";
@@ -814,10 +998,17 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 drinkLine = "Drinks without plate (" + drinksAmount + ")";
             }
 
-            ((DefaultListModel<String>)this.servedPlatesList.getModel()).addElement(drinkLine);
-
+            // Update model
+            Drink drinkOrder = new Drink(drinkLine, PlateCategory.DRINK, drinksAmount);
+            PlateOrder order = new PlateOrder(drinkOrder, 1);
+            this.currentTable.addOrder(order);
             this.billAmount = this.billAmount.add(
                 new BigDecimal(drinksAmount).setScale(2, RoundingMode.HALF_EVEN));
+            this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
+
+            // Update UI
+            this.servedPlatesListModel.addElement(
+                order.getQuantity() + " " + drinkLine);
             this.billAmountLabel.setText(String.valueOf(
                 this.billAmount + " " + this.currencySymbol));
         } catch (NumberFormatException e) {
@@ -830,9 +1021,9 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel billAmountLabel;
+    private javax.swing.JButton billCheckoutButton;
     private javax.swing.JLabel billLabel;
     private javax.swing.JLabel billPaidStateLabel;
-    private javax.swing.JButton billPayButton;
     private javax.swing.JComboBox<String> dessertsCombobox;
     private javax.swing.JLabel dessertsCommentsLabel;
     private javax.swing.JTextField dessertsCommentsTextfield;

@@ -38,16 +38,12 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
      * @param modal
      * @param applicationName
      */
-    public LoginGui(java.awt.Frame parent, boolean modal, String applicationName) {
+    public LoginGui(java.awt.Frame parent, boolean modal) {
         super(parent, modal);
         initComponents();
 
-        this.initAdditionalComponents(applicationName);
-    }
-
-    private void initAdditionalComponents(String applicationName) {
         setLocationRelativeTo(null);
-        this.setTitle(applicationName);
+        this.setResizable(false);
         
         this.waiterLoginTextfield.addKeyListener(this);
         this.waiterPasswordTextfield.addKeyListener(this);
@@ -57,6 +53,7 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
         this.dateTimeThread = new DateTimeThread(this.dateLabel);
         this.dateTimeThread.start();
     }
+
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -73,6 +70,8 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
         waiterLoginTextfield = new javax.swing.JTextField();
         loginButton = new javax.swing.JButton();
         cancelButton = new javax.swing.JButton();
+
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
 
         dateLabel.setText("jLabel1");
 

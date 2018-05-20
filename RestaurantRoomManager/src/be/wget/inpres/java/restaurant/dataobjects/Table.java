@@ -36,6 +36,7 @@ public class Table {
         this.number = number;
         this.maxCovers = maxCovers;
         this.orders = new ArrayList<>();
+        this.billPaid = false;
     }   
     
     public void addOrder(PlateOrder order) {
@@ -49,7 +50,11 @@ public class Table {
         }
         this.effectiveCovers = covers;
     }
-    
+
+    public void setBillAmount(double amount) {
+        this.billAmount = amount;
+    }
+
     public void setBillPaid() {
         this.billPaid = true;
     }

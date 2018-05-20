@@ -65,19 +65,19 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
         this.billActionPrintRadio.setToolTipText("Craft an invoice document");
         this.billActionPayRadio.setToolTipText("Register the payment");
     }
-    
+
     public void setTable(String table) {
         this.tableTextfield.setText(table);
     }
-    
+
     public void setPlatesQuantity(int quantity) {
         this.platesQuantityTextfield.setText(String.valueOf(quantity));
     }
-    
+
     public void setBillAmount(BigDecimal amount) {
         this.billAmountTextfield.setText(String.valueOf(amount));
     }
-    
+
     public void setBillPaidState(boolean state) {
         this.billPaid = state;
         if (this.billPaid) {
@@ -113,7 +113,8 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
         platesQuantityTextfield = new javax.swing.JTextField();
         billAmountTextfield = new javax.swing.JTextField();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
+        setResizable(false);
 
         tableLabel.setText("Table:");
 
@@ -245,7 +246,9 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+        if (ke.getKeyCode() == KeyEvent.VK_ESCAPE) {
+            this.setVisible(false);
+        } else if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
             if (this.billActionViewRadio.isSelected()) {
                 this.viewBill();
             } else if (this.billActionPrintRadio.isSelected()) {
