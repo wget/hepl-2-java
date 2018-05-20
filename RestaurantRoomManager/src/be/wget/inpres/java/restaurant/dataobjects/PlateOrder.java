@@ -16,6 +16,9 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 /**
  *
  * @author wget
@@ -23,10 +26,18 @@ package be.wget.inpres.java.restaurant.dataobjects;
 public class PlateOrder {
     protected Plate plate;
     protected int quantity;
+    protected BigDecimal price;
 
     public PlateOrder(Plate plate, int quantity) {
         this.plate = plate;
         this.quantity = quantity;
+        this.price = new BigDecimal(this.plate.getPrice())
+            .multiply(new BigDecimal(quantity))
+            // Round to the nearest value (2 digits).
+            // Rounding seems to be needed by law (legally binding for
+            // commercial pieces of software)
+            // src.: https://introcs.cs.princeton.edu/java/91float/
+            .setScale(2, RoundingMode.HALF_EVEN);
     }
 
     public void setPlate(Plate plate) {
@@ -35,6 +46,9 @@ public class PlateOrder {
     
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+        this.price = new BigDecimal(this.plate.getPrice())
+            .multiply(new BigDecimal(quantity))
+            .setScale(2, RoundingMode.HALF_EVEN);
     }
     
     public Plate getPlate() {
@@ -43,5 +57,9 @@ public class PlateOrder {
 
     public int getQuantity() {
         return quantity;
+    }
+
+    public BigDecimal getPrice() {
+        return this.price;
     }
 }

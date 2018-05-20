@@ -28,10 +28,8 @@ import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -595,7 +593,9 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
     private void orderPlate() {
         int plateQuantityInput = 0;
+        Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
         try {
+            selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
             plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
         
             if (plateQuantityInput <= 0) {
@@ -613,7 +613,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     this.currentTable.getMaxCovers());
             }
             
-            this.orderCurrentPlate();
+            this.orderCurrentPlate(selectedPlate, plateQuantityInput);
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -666,35 +666,25 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
 
-            this.orderCurrentPlate();
+            this.orderCurrentPlate(selectedPlate, plateQuantityInput);
         }
     }
 
-    private void orderCurrentPlate() {
-        Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
-        int plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
-        
+    private void orderCurrentPlate(Plate plate, int quantity) {
         // Update model
-        this.ordersToSend.add(new PlateOrder(selectedPlate, plateQuantityInput));
+        PlateOrder order = new PlateOrder(plate, quantity);
+        this.ordersToSend.add(order);
         this.currentTable.setEffectiveCovers(
-            this.currentTable.getEffectiveCovers() + plateQuantityInput);
-        this.billAmount = this.billAmount.add(
-            new BigDecimal(plateQuantityInput).multiply(
-            new BigDecimal(selectedPlate.getPrice())))
-            // Round to the nearest value (2 digits).
-            // Rounding seems to be needed by law
-            // src.: https://introcs.cs.princeton.edu/java/91float/
-            .setScale(2, RoundingMode.HALF_EVEN);
-        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
+            this.currentTable.getEffectiveCovers() + order.getQuantity());
+        this.billAmount = this.billAmount.add(order.getPrice());
 
         // Update UI
         this.ordersToSendListModel.addElement(
-            plateQuantityInput + " " +
-            ((MainCourse)selectedPlate).getCode() + ": " +
-            selectedPlate.getLabel() + " (" +
-            Float.valueOf(new DecimalFormat("#.##").format(
-                plateQuantityInput * selectedPlate.getPrice()))
-                + " " + this.currencySymbol + ")"
+            order.getQuantity() + " " +
+            ((MainCourse)order.getPlate()).getCode() + ": " +
+            ((MainCourse)order.getPlate()).getLabel() + " (" +
+            order.getPrice().toString() + " " +
+            this.currencySymbol + ")"
         );
         this.effectiveCoversValueLabel.setText(
             String.valueOf(this.currentTable.getEffectiveCovers()));
@@ -704,33 +694,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }
     
     private void orderDessert() {
-        Plate selectedPlate = this.defaultDesserts.get(this.dessertsCombobox.getSelectedIndex());
-        int dessertQuantityInput = Integer.parseInt(this.dessertsQuantityTextfield.getText());
-
-        // Update model
-        this.ordersToSend.add(new PlateOrder(selectedPlate, dessertQuantityInput));
-        this.billAmount = this.billAmount.add(
-            new BigDecimal(dessertQuantityInput).multiply(
-            new BigDecimal(Double.toString(selectedPlate.getPrice())))
-            .setScale(2, RoundingMode.HALF_EVEN));
-        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
-
-        // Update UI
-        this.ordersToSendListModel.addElement(
-            dessertQuantityInput + " " +
-            ((Dessert)selectedPlate).getCode() + ": " +
-            selectedPlate.getLabel() + " (" +
-            Float.valueOf(new DecimalFormat("#.##").format(
-                dessertQuantityInput * selectedPlate.getPrice()))
-                + " " + this.currencySymbol + ")"
-        );
-        this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
-        this.ordersSentCheckbox.setSelected(false);
-    }
-    
-    private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
+        Plate selectedPlate;
         int dessertQuantityInput = 0;
         try {
+            selectedPlate = this.defaultDesserts.get(this.dessertsCombobox.getSelectedIndex());
             dessertQuantityInput = Integer.parseInt(this.dessertsQuantityTextfield.getText());
         
             if (dessertQuantityInput <= 0) {
@@ -741,7 +708,21 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
             
-            this.orderDessert();
+            // Update model
+            PlateOrder order = new PlateOrder(selectedPlate, dessertQuantityInput);
+            this.ordersToSend.add(order);
+            this.billAmount = this.billAmount.add(order.getPrice());
+
+            // Update UI
+            this.ordersToSendListModel.addElement(
+                order.getQuantity() + " " +
+                ((Dessert)order.getPlate()).getCode() + ": " +
+                ((Dessert)order.getPlate()).getLabel() + " (" +
+                order.getPrice().toString() + " " +
+                this.currencySymbol + ")"
+            );
+            this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
+            this.ordersSentCheckbox.setSelected(false);
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -749,6 +730,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 "Invalid quantity",
                 JOptionPane.ERROR_MESSAGE); 
         }
+    }
+
+    private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
+        this.orderDessert();
     }//GEN-LAST:event_dessertsOrderButtonActionPerformed
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
@@ -758,11 +743,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
         for (PlateOrder order: this.ordersToSend) {
             this.currentTable.addOrder(order);
+            this.billAmount.add(order.getPrice());
             // Effective sending to the other application (socket, IPC, whatever).
             System.out.println("Sending " + order.getQuantity() + "x " + order.getPlate().getLabel());
         }
         this.ordersToSendListModel.clear();
         this.ordersToSend.clear();
+        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
         this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
@@ -787,9 +774,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         waiterChangeGui.setWaiterName(this.currentTable.getWaiterName());
         waiterChangeGui.setVisible(true);
 
-        // Backup the current waiter name before changing the table, otherwise
-        // we will lose access to it after the table switch.
-        String currentWaiterName = this.currentTable.getWaiterName();
+        // Used to backup the new waiter name further in the code, otherwise
+        // we will lose access to it after the table has switched.
+        // Saving the current waiter name here is also needed in order to save
+        // the current waiter on table for which no plate has been sent.
+        String newWaiterName = this.currentTable.getWaiterName();
 
         if (waiterChangeGui.isWaiterChanging()) {
 
@@ -821,6 +810,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     continue;
                 }
                 // Change the waiter
+                newWaiterName = login.getUsername();
                 this.currentTable.setWaiterName(login.getUsername());
                 this.setTitle(this.applicationName + ": " + this.currentTable.getWaiterName());
 
@@ -835,7 +825,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         boolean tableFound = false;
         int tableIndex = 0;
         while (tableIndex < this.savedTables.size()) {
-            if (newTableNumber == this.savedTables.get(tableIndex).getNumber()) {
+            if (newTableNumber.equals(this.savedTables.get(tableIndex).getNumber())) {
                 tableFound = true;
                 break;
             }
@@ -848,8 +838,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         }
 
         // Update model with new table info
-        this.currentTable.setWaiterName(currentWaiterName);
+        this.currentTable.setWaiterName(newWaiterName);
         this.selectedTableIndex = this.tableCombobox.getSelectedIndex();
+        this.billAmount = new BigDecimal(
+            String.valueOf(this.currentTable.getBillAmount()));
 
         // Update UI
         // Clean GUI of values from previous table
@@ -873,17 +865,15 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     order.getQuantity() + " " +
                     code + ": " +
                     order.getPlate().getLabel() + " (" +
-                    Float.valueOf(new DecimalFormat("#.##").format(
-                        order.getQuantity() * order.getPlate().getPrice()))
-                        + " " + this.currencySymbol + ")"
+                    order.getPrice().toString() + " " +
+                    this.currencySymbol + ")"
                 );
             } else {
                 this.servedPlatesListModel.addElement(
                     order.getQuantity() + " " +
                     order.getPlate().getLabel() + " (" +
-                    Float.valueOf(new DecimalFormat("#.##").format(
-                        order.getQuantity() * order.getPlate().getPrice()))
-                        + " " + this.currencySymbol + ")"
+                    order.getPrice().toString() + " " +
+                    this.currencySymbol + ")"
                 );
             }
         }
@@ -934,6 +924,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
         }
+
+        // Recompute the bill amount in order to discard non delivered orders
+        this.billAmount = new BigDecimal(0);
+        for(PlateOrder order: this.currentTable.getOrders()) {
+            this.billAmount = this.billAmount.add(order.getPrice());
+        }
+        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
         // Save the current table
         boolean tableFound = false;
@@ -990,25 +987,25 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             String drinkLine;
             if (this.currentTable.getEffectiveCovers() > 0) {
                 if (this.currentTable.getEffectiveCovers() == 1) {
-                    drinkLine = "Drinks with plate (" + drinksAmount + ")";
+                    drinkLine = "Drinks with plate";
                 } else {
-                    drinkLine = "Drinks with plates (" + drinksAmount + ")";
+                    drinkLine = "Drinks with plates";
                 }
             } else {
-                drinkLine = "Drinks without plate (" + drinksAmount + ")";
+                drinkLine = "Drinks without plate";
             }
 
             // Update model
-            Drink drinkOrder = new Drink(drinkLine, PlateCategory.DRINK, drinksAmount);
-            PlateOrder order = new PlateOrder(drinkOrder, 1);
-            this.currentTable.addOrder(order);
-            this.billAmount = this.billAmount.add(
-                new BigDecimal(drinksAmount).setScale(2, RoundingMode.HALF_EVEN));
-            this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
+            Drink drink = new Drink(drinkLine, PlateCategory.DRINK, drinksAmount);
+            PlateOrder drinkOrder = new PlateOrder(drink, 1);
+            this.currentTable.addOrder(drinkOrder);
+            this.billAmount = this.billAmount.add(drinkOrder.getPrice());
 
             // Update UI
             this.servedPlatesListModel.addElement(
-                order.getQuantity() + " " + drinkLine);
+                drinkOrder.getQuantity() + " " +
+                drink.getLabel() + " (" +
+                drink.getPrice() + ")");
             this.billAmountLabel.setText(String.valueOf(
                 this.billAmount + " " + this.currencySymbol));
         } catch (NumberFormatException e) {
