@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package be.wget.inpres.java.restaurantroommanager;
+package be.wget.inpres.java.restaurant.roommanager;
 
 import java.text.DateFormat;
 import java.util.Date;

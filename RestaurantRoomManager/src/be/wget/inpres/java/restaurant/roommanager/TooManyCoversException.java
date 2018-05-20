@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package be.wget.inpres.java.restaurantroommanager;
+package be.wget.inpres.java.restaurant.roommanager;
 
 /**
  *

@@ -14,7 +14,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package be.wget.inpres.java.restaurantroommanager.guis;
+package be.wget.inpres.java.restaurant.roommanager.guis;
 
 import be.wget.inpres.java.restaurant.dataobjects.Dessert;
 import be.wget.inpres.java.restaurant.dataobjects.Drink;
@@ -23,7 +23,7 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
-import be.wget.inpres.java.restaurantroommanager.TooManyCoversException;
+import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;

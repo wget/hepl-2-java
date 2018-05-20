@@ -3,8 +3,8 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package be.wget.inpres.java.restaurantroommanager;
-import be.wget.inpres.java.restaurantroommanager.guis.RestaurantRoomManagerGui;
+package be.wget.inpres.java.restaurant.roommanager;
+import be.wget.inpres.java.restaurant.roommanager.guis.RestaurantRoomManagerGui;
 
 /**
  *
