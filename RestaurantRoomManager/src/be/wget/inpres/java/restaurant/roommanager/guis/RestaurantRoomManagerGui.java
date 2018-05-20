@@ -54,6 +54,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private ArrayList<Table> savedTables;
     private ArrayList<PlateOrder> ordersToSend;
     private Table currentTable;
+    private int effectiveCovers;
     private int selectedTableIndex;
     private BigDecimal billAmount;
     private DefaultListModel<String> ordersToSendListModel;
@@ -118,6 +119,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.servedPlatesList.setModel(servedPlatesListModel);
         this.selectedTableIndex = 0;
         this.billAmount = new BigDecimal("0");
+        this.effectiveCovers = 0;
     }
     
     private void populateData() {
@@ -592,10 +594,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }//GEN-LAST:event_platesOrderButtonActionPerformed
 
     private void orderPlate() {
-        int plateQuantityInput = 0;
         Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
+        int plateQuantityInput = 0;
+
         try {
-            selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
             plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
         
             if (plateQuantityInput <= 0) {
@@ -606,7 +608,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
 
-            if (this.currentTable.getEffectiveCovers()
+            if (this.effectiveCovers
                 + plateQuantityInput > this.currentTable.getMaxCovers()) {
                 throw new TooManyCoversException(
                     plateQuantityInput,
@@ -624,9 +626,9 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             String noButtonText;
             String yesButtonText;
             String questionText;
-            if (this.currentTable.getEffectiveCovers() == 0) {
+            if (this.effectiveCovers== 0) {
                 noButtonText = "No, keep no cover";
-            } else if (this.currentTable.getEffectiveCovers() == 1) {
+            } else if (this.effectiveCovers == 1) {
                 noButtonText = "No, keep my existing cover";
             } else {
                 noButtonText = "No, keep my existing " +
@@ -674,8 +676,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         // Update model
         PlateOrder order = new PlateOrder(plate, quantity);
         this.ordersToSend.add(order);
-        this.currentTable.setEffectiveCovers(
-            this.currentTable.getEffectiveCovers() + order.getQuantity());
+        this.effectiveCovers += order.getQuantity();
         this.billAmount = this.billAmount.add(order.getPrice());
 
         // Update UI
@@ -741,6 +742,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             this.servedPlatesListModel.addElement(ordersToSendListModel.get(i));
         }
 
+        this.currentTable.setEffectiveCovers(this.effectiveCovers);
         for (PlateOrder order: this.ordersToSend) {
             this.currentTable.addOrder(order);
             this.billAmount.add(order.getPrice());
@@ -750,6 +752,29 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.ordersToSendListModel.clear();
         this.ordersToSend.clear();
         this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
+
+        // Update drinks type depending if there are other plates sent or not
+        String drinkLine;
+        if (this.currentTable.getEffectiveCovers() == 1) {
+            drinkLine = "Drinks with plate";
+        } else if (this.currentTable.getEffectiveCovers() > 1) {
+            drinkLine = "Drinks with plates";
+        } else {
+            drinkLine = "Drinks without plate";
+        }
+        ArrayList<PlateOrder> orders = this.currentTable.getOrders();
+        for (int i = 0; i < orders.size(); i++) {
+            PlateOrder plateOrder = orders.get(i);
+            if (plateOrder.getPlate() instanceof Drink) {
+                plateOrder.getPlate().setLabel(drinkLine);
+                this.servedPlatesListModel.set(i,
+                    plateOrder.getQuantity() + " " +
+                    plateOrder.getPlate().getLabel() + " (" +
+                    plateOrder.getPlate().getPrice() + " " +
+                    this.currencySymbol + ")");
+                System.out.println("Changing drinks type...");
+            }
+        }
 
         this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
@@ -985,12 +1010,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             }
 
             String drinkLine;
-            if (this.currentTable.getEffectiveCovers() > 0) {
-                if (this.currentTable.getEffectiveCovers() == 1) {
-                    drinkLine = "Drinks with plate";
-                } else {
-                    drinkLine = "Drinks with plates";
-                }
+            if (this.currentTable.getEffectiveCovers() == 1) {
+                drinkLine = "Drinks with plate";
+            } else if (this.currentTable.getEffectiveCovers() > 1) {
+                drinkLine = "Drinks with plates";
             } else {
                 drinkLine = "Drinks without plate";
             }
@@ -1005,7 +1028,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             this.servedPlatesListModel.addElement(
                 drinkOrder.getQuantity() + " " +
                 drink.getLabel() + " (" +
-                drink.getPrice() + ")");
+                drink.getPrice() + " " +
+                this.currencySymbol + ")");
             this.billAmountLabel.setText(String.valueOf(
                 this.billAmount + " " + this.currencySymbol));
         } catch (NumberFormatException e) {
