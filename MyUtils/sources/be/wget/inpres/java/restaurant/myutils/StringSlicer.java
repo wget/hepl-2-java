@@ -12,6 +12,13 @@ public class StringSlicer {
 
     String[] splitString;
 
+    /**
+     * Create a StringSlicer instance.
+     * @param string The string to slice.
+     * @param delimiter The delimiter where to cut the string (like explode in
+     * PHP). Doesn't need to be a one char only character as strings are
+     * supported.
+     */
     public StringSlicer(String string, String delimiter) {
         this.splitString = string.split(delimiter);
     }
