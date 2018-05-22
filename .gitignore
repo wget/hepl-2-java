@@ -1,6 +1,5 @@
-**/build/
-/MyUtils/nbproject/private/
-/RestaurantKitchenManager/nbproject/private/
-/RestaurantConfigLibrary/nbproject/private/
-/RestaurantConfigLibrary/dist/
-/RestaurantKitchenManager/dist/
+nbproject/private/
+build/
+nbbuild/
+dist/
+nbdist/
