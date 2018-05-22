@@ -16,6 +16,7 @@
  */
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
+import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import be.wget.inpres.java.restaurant.dataobjects.Dessert;
 import be.wget.inpres.java.restaurant.dataobjects.Drink;
 import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
@@ -23,19 +24,29 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
+import be.wget.inpres.java.restaurant.myutils.StringSlicer;
 import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.HashMap;
+import javax.imageio.ImageIO;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
+import javax.swing.Icon;
+import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import network.NetworkBasicClient;
 
 /**
  *
@@ -43,7 +54,6 @@ import javax.swing.JOptionPane;
  */
 public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyListener {
 
-    private final String applicationName = "Restaurant Room Manager \"Le gourmet audatieux\"";
     private final String currencySymbol = "EUR";
 
     // Hashtable is deprecated, let's use a Hashmap instead.
@@ -59,6 +69,9 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private BigDecimal billAmount;
     private DefaultListModel<String> ordersToSendListModel;
     private DefaultListModel<String> servedPlatesListModel;
+    private RestaurantConfig applicationConfig;
+    private NetworkBasicClient networkSender;
+    private Icon applicationIcon;
 
     /**
      * Creates new form Main
@@ -74,42 +87,35 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.populateData();
         this.initApplicationGui();
         
-        LoginGui login = new LoginGui(this, true);
-        while (true) {
-            login.setVisible(true);
-            if (login.isDialogCancelled()) {
-                System.exit(1);
-            }
-
-            String hashedPassword = this.credentials.get(login.getUsername());
-            if (hashedPassword == null) {
-                JOptionPane.showMessageDialog(getParent(),
-                    "Unable to find the user \""
-                    + login.getUsername()
-                    + "\". Quitting.",
-                    this.applicationName,
-                    JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
-            }
-
-            if (!hashedPassword.equals(this.getSha512FromPassword(login.getPassword()))) {
-                JOptionPane.showMessageDialog(getParent(),
-                    "The password for the user \""
-                    + login.getUsername()
-                    + " \"is incorrect. Quitting.",
-                    this.applicationName,
-                    JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
-            }
-            break;
-        }
-        this.currentTable.setWaiterName(login.getUsername());
-        login.dispose();
-        this.setTitle(this.applicationName + ": " + this.currentTable.getWaiterName());
+        this.authenticateUser();
     }
     
     private void initAdditionalComponents() {
-        this.setTitle(this.applicationName);
+        this.applicationConfig = new RestaurantConfig();
+
+        try {
+            this.applicationIcon = new ImageIcon(ImageIO.read(
+                RestaurantRoomManagerGui.class.getResourceAsStream("/assets/appIcon.png")));
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "The \"assets\" folder coudn't be found.",
+                this.applicationConfig.getRestaurantName(),
+                JOptionPane.WARNING_MESSAGE);
+            this.applicationIcon = new ImageIcon();
+        }
+        this.setIconImage(((ImageIcon)this.applicationIcon).getImage());
+
+        if (!this.applicationConfig.isConfigFileDefined()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Unable to find the settings file \""
+                    + this.applicationConfig.getSettingsFilename()
+                    + "\". Using the defaults settings.",
+                this.applicationConfig.getRestaurantName(),
+                JOptionPane.WARNING_MESSAGE);
+        }
+        this.setTitle(this.applicationConfig.getRestaurantName());
         this.setLocationRelativeTo(null);
         this.ordersSentCheckbox.setEnabled(false);
         this.ordersReadyCheckbox.setEnabled(false);
@@ -120,6 +126,24 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.selectedTableIndex = 0;
         this.billAmount = new BigDecimal("0");
         this.effectiveCovers = 0;
+        this.ordersToSendList.addKeyListener(this);
+        this.startNetworkConnection();
+        this.addWindowListener(new RoomManagerWindowAdapter(this));
+    }
+
+    class RoomManagerWindowAdapter extends WindowAdapter {
+
+        RestaurantRoomManagerGui frame;
+
+        public RoomManagerWindowAdapter(RestaurantRoomManagerGui frame) {
+            super();
+            this.frame = frame;
+        }
+
+        @Override
+        public void windowClosing(WindowEvent event) {
+            frame.exitApplication();
+        }
     }
     
     private void populateData() {
@@ -152,13 +176,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.defaultMainCourses.add(new MainCourse("Veau au rollmops sauce Herve", 15.75, "VRH"));
         this.defaultMainCourses.add(new MainCourse("Cabillaud chantilly de Terre Neuve", 16.9, "CC"));
         this.defaultMainCourses.add(new MainCourse("Fillet de boeuf Enfer des papilles", 16.8, "FE"));
-        this.defaultMainCourses.add(new MainCourse("Gruyère farci aux rognons-téquila", 13.4, "VRH"));
+        this.defaultMainCourses.add(new MainCourse("Gruyère farci aux rognons-téquila", 13.4, "GF"));
         this.defaultMainCourses.add(new MainCourse("Potée auvergnate au miel", 12.5, "PA"));
         this.defaultDesserts = new ArrayList<>();
         this.defaultDesserts.add(new Dessert("Mousse au chocolat salé", 5.35, "D_MC"));
         this.defaultDesserts.add(new Dessert("Sorbet citron courgette Colonel", 6.85, "D_SC"));
         this.defaultDesserts.add(new Dessert("Duo de crêpes Juliettes", 6, "D_CJ"));
-        this.defaultDesserts.add(new Dessert("Dame grise", 5.55, "D_SG"));
+        this.defaultDesserts.add(new Dessert("Dame grise", 5.55, "D_DG"));
         this.defaultDesserts.add(new Dessert("Crème très brulée carbonne", 7, "D_CB"));
     }
     
@@ -207,7 +231,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 " (" + plate.getPrice() + ")");
         });
         this.dessertsCombobox.setModel(new DefaultComboBoxModel<>(
-            (String[])dessertNames.toArray(new String[dessertNames.size()]))); 
+            dessertNames.toArray(new String[dessertNames.size()])));
         
         this.currentTable = tables.get(this.tableCombobox.getSelectedItem().toString());
         this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
@@ -222,6 +246,45 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.dessertsCombobox.setSelectedIndex(0);
     }
     
+    private void authenticateUser() {
+        LoginGui login = new LoginGui(this, true);
+        while (true) {
+            login.setVisible(true);
+            if (login.isDialogCancelled()) {
+                System.exit(1);
+            }
+
+            String hashedPassword = this.credentials.get(login.getUsername());
+            if (hashedPassword == null) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Unable to find the user \""
+                        + login.getUsername()
+                        + "\". Quitting...",
+                    this.applicationConfig.getRestaurantName(),
+                    JOptionPane.ERROR_MESSAGE);
+                System.exit(0);
+            }
+
+            if (!hashedPassword.equals(
+                this.getSha512FromPassword(login.getPassword()))) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "The password for the user \""
+                        + login.getUsername()
+                        + " \"is incorrect. Quitting...",
+                    this.applicationConfig.getRestaurantName(),
+                    JOptionPane.ERROR_MESSAGE);
+                System.exit(0);
+            }
+            break;
+        }
+        this.currentTable.setWaiterName(login.getUsername());
+        login.dispose();
+        this.setTitle(this.applicationConfig.getRestaurantName()
+            + ": " + this.currentTable.getWaiterName());
+    }
+
     private String getSha512FromPassword(String password) {
 
         try {
@@ -243,6 +306,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         return null;
     }
     
+    private void startNetworkConnection() {
+        this.networkSender = new NetworkBasicClient(
+            this.applicationConfig.getServerAddress(),
+            this.applicationConfig.getServerPort());
+    }
         
     private void quitApplicationWithConfirm() {
         Object[] options = {
@@ -321,7 +389,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         readAvailablePlatesButton = new javax.swing.JButton();
         billAmountLabel = new javax.swing.JLabel();
 
-        setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
 
         tableLabel.setText("Table:");
 
@@ -594,11 +662,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }//GEN-LAST:event_platesOrderButtonActionPerformed
 
     private void orderPlate() {
-        Plate selectedPlate = this.defaultMainCourses.get(this.platesCombobox.getSelectedIndex());
+        Plate selectedPlate = this.defaultMainCourses.get(
+            this.platesCombobox.getSelectedIndex());
         int plateQuantityInput = 0;
 
         try {
-            plateQuantityInput = Integer.parseInt(this.platesQuantityTextfield.getText());
+            plateQuantityInput = Integer.parseInt(
+                this.platesQuantityTextfield.getText());
         
             if (plateQuantityInput <= 0) {
                 JOptionPane.showMessageDialog(this,
@@ -626,25 +696,31 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             String noButtonText;
             String yesButtonText;
             String questionText;
-            if (this.effectiveCovers== 0) {
-                noButtonText = "No, keep no cover";
-            } else if (this.effectiveCovers == 1) {
-                noButtonText = "No, keep my existing cover";
-            } else {
-                noButtonText = "No, keep my existing " +
-                    this.currentTable.getEffectiveCovers() + " covers";
+            switch (this.effectiveCovers) {
+                case 0:
+                    noButtonText = "No, keep no cover";
+                    break;
+                case 1:
+                    noButtonText = "No, keep my existing cover";
+                    break;
+                default:
+                    noButtonText = "No, keep my existing " +
+                        this.effectiveCovers + " covers";
+                    break;
             }
             if (plateQuantityInput == 1) {
                 questionText = "Do you really want to add one additional cover?";
                 yesButtonText = "Yes, add one additional cover";
             } else {
-                questionText = "Do you really want to add " + plateQuantityInput + " additional covers?";
-                yesButtonText = "Yes, add " + plateQuantityInput + " additional covers";
+                questionText = "Do you really want to add "
+                    + plateQuantityInput + " additional covers?";
+                yesButtonText = "Yes, add "
+                    + plateQuantityInput + " additional covers";
             }
 
             Object[] options = {
-                noButtonText,
-                yesButtonText
+                yesButtonText,
+                noButtonText
             };
             int answer = JOptionPane.showOptionDialog(
                 this,
@@ -657,14 +733,14 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 // Specifies the titles of the buttons.
                 options,
                 // Use default button title.
-                options[1]);
+                options[0]);
             
             // Cancel everything
             if (answer == JOptionPane.CLOSED_OPTION ||
                 // Yes, we needed to revert the sense of the YES_OPTION, because
                 // we really wanted to have the No statement at the left, which
                 // is Yes by default on Swing.
-                answer == JOptionPane.YES_OPTION) {
+                answer == JOptionPane.NO_OPTION) {
                 return;
             }
 
@@ -674,34 +750,84 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
     private void orderCurrentPlate(Plate plate, int quantity) {
         // Update model
-        PlateOrder order = new PlateOrder(plate, quantity);
-        this.ordersToSend.add(order);
-        this.effectiveCovers += order.getQuantity();
-        this.billAmount = this.billAmount.add(order.getPrice());
+        int i = 0;
+        Boolean itemChanged = false;
+        PlateOrder order = null;
+        for (; i < this.ordersToSend.size(); i++) {
+            order = this.ordersToSend.get(i);
+            if (order.getPlate() instanceof MainCourse &&
+                plate instanceof MainCourse) {
+                if (((MainCourse)order.getPlate()).getCode().equals(
+                    ((MainCourse)plate).getCode())) {
+                    order.addQuantity(quantity);
+                    this.ordersToSend.set(i, order);
+                    itemChanged = true;
+                    break;
+                }
+            } else if (order.getPlate() instanceof Dessert &&
+                       plate instanceof Dessert) {
+                if (((Dessert)order.getPlate()).getCode().equals(
+                    ((Dessert)plate).getCode())) {
+                    order.addQuantity(quantity);
+                    this.ordersToSend.set(i, order);
+                    itemChanged = true;
+                    break;
+                }
+            }
+        }
+
+        if (!itemChanged) {
+            order = new PlateOrder(plate, quantity);
+            this.ordersToSend.add(order);
+        }
+
+        if (plate instanceof MainCourse) {
+            this.effectiveCovers += quantity;
+        }
+        this.billAmount = this.billAmount.add(
+            new BigDecimal(plate.getPrice())
+            .multiply(new BigDecimal(quantity))
+            .setScale(2, RoundingMode.HALF_EVEN));
 
         // Update UI
-        this.ordersToSendListModel.addElement(
-            order.getQuantity() + " " +
-            ((MainCourse)order.getPlate()).getCode() + ": " +
-            ((MainCourse)order.getPlate()).getLabel() + " (" +
+        String plateCode;
+        String plateLabel;
+        if (plate instanceof MainCourse) {
+            plateCode = ((MainCourse)order.getPlate()).getCode();
+            plateLabel = ((MainCourse)order.getPlate()).getLabel();
+        } else {
+            plateCode = ((Dessert)order.getPlate()).getCode();
+            plateLabel = ((Dessert)order.getPlate()).getLabel();
+        }
+        String orderLine = order.getQuantity() + " " +
+            plateCode + ": " +
+            plateLabel + " (" +
             order.getPrice().toString() + " " +
-            this.currencySymbol + ")"
-        );
-        this.effectiveCoversValueLabel.setText(
-            String.valueOf(this.currentTable.getEffectiveCovers()));
+            this.currencySymbol + ")";
+        if (!itemChanged) {
+            this.ordersToSendListModel.addElement(orderLine);
+        } else {
+            this.ordersToSendListModel.setElementAt(orderLine, i);
+        }
+
+        if (plate instanceof MainCourse) {
+            this.effectiveCoversValueLabel.setText(
+                String.valueOf(this.effectiveCovers));
+        }
         this.billAmountLabel.setText(
             String.valueOf(this.billAmount + " " + this.currencySymbol));
-        this.ordersSentCheckbox.setSelected(false);
     }
     
     private void orderDessert() {
-        Plate selectedPlate;
-        int dessertQuantityInput = 0;
+        Plate dessert;
+        int dessertQuantity = 0;
         try {
-            selectedPlate = this.defaultDesserts.get(this.dessertsCombobox.getSelectedIndex());
-            dessertQuantityInput = Integer.parseInt(this.dessertsQuantityTextfield.getText());
+            dessert = this.defaultDesserts.get(
+                this.dessertsCombobox.getSelectedIndex());
+            dessertQuantity = Integer.parseInt(
+                this.dessertsQuantityTextfield.getText());
         
-            if (dessertQuantityInput <= 0) {
+            if (dessertQuantity <= 0) {
                 JOptionPane.showMessageDialog(this,
                     "The dessert quantity must be positive",
                     "Invalid quantity",
@@ -709,21 +835,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
             
-            // Update model
-            PlateOrder order = new PlateOrder(selectedPlate, dessertQuantityInput);
-            this.ordersToSend.add(order);
-            this.billAmount = this.billAmount.add(order.getPrice());
-
-            // Update UI
-            this.ordersToSendListModel.addElement(
-                order.getQuantity() + " " +
-                ((Dessert)order.getPlate()).getCode() + ": " +
-                ((Dessert)order.getPlate()).getLabel() + " (" +
-                order.getPrice().toString() + " " +
-                this.currencySymbol + ")"
-            );
-            this.billAmountLabel.setText(String.valueOf(this.billAmount + " " + this.currencySymbol));
-            this.ordersSentCheckbox.setSelected(false);
+            this.orderCurrentPlate(dessert, dessertQuantity);
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -733,27 +845,183 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         }
     }
 
+    private void removeFromOrdersToSend() {
+        int selectedOrder = this.ordersToSendList.getSelectedIndex();
+        if (this.ordersToSend.isEmpty()) {
+            return;
+        }
+        PlateOrder order = this.ordersToSend.get(selectedOrder);
+        boolean isRemovalRequired = false;
+
+        if (order.getQuantity() == 1) {
+            isRemovalRequired = true;
+        }
+
+        // Update model
+        order.removeQuantity();
+        double unitPrice = 0;
+        if (order.getPlate() instanceof MainCourse) {
+            unitPrice = ((MainCourse)order.getPlate()).getPrice();
+            this.effectiveCovers--;
+        } else if (order.getPlate() instanceof Dessert) {
+            unitPrice = ((Dessert)order.getPlate()).getPrice();
+        }
+        this.billAmount = this.billAmount.subtract(
+            new BigDecimal(unitPrice)
+            .setScale(2, RoundingMode.HALF_EVEN));
+
+        if (isRemovalRequired) {
+            this.ordersToSend.remove(selectedOrder);
+        } else {
+            this.ordersToSend.set(selectedOrder, order);
+        }
+
+        // Update UI
+        this.billAmountLabel.setText(
+            String.valueOf(this.billAmount + " " + this.currencySymbol));
+
+        if (isRemovalRequired) {
+            ((DefaultListModel)this.ordersToSendList.getModel())
+                .remove(selectedOrder);
+            return;
+        }
+
+        String plateCode;
+        String plateLabel;
+        if (order.getPlate() instanceof MainCourse) {
+            plateCode = ((MainCourse)order.getPlate()).getCode();
+            plateLabel = ((MainCourse)order.getPlate()).getLabel();
+            this.effectiveCoversValueLabel.setText(
+                String.valueOf(this.effectiveCovers));
+        } else {
+            plateCode = ((Dessert)order.getPlate()).getCode();
+            plateLabel = ((Dessert)order.getPlate()).getLabel();
+        }
+        String orderLine = order.getQuantity() + " " +
+            plateCode + ": " +
+            plateLabel + " (" +
+            order.getPrice().toString() + " " +
+            this.currencySymbol + ")";
+        ((DefaultListModel)this.ordersToSendList.getModel())
+            .setElementAt(orderLine, selectedOrder);
+    }
+
     private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
         this.orderDessert();
     }//GEN-LAST:event_dessertsOrderButtonActionPerformed
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
+
+        // Effective sending to the other application (socket, IPC, whatever).
+        StringBuilder ordersToServer = new StringBuilder();
+        DateFormat df = DateFormat.getDateTimeInstance(
+        DateFormat.SHORT, DateFormat.SHORT);
+        String orderTime = df.format(new Date());
+        for (PlateOrder order: this.ordersToSend) {
+            ordersToServer.append(order.getQuantity());
+            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
+            if (order.getPlate() instanceof MainCourse) {
+                ordersToServer.append(((MainCourse)order.getPlate()).getCode());
+            } else {
+                ordersToServer.append(((Dessert)order.getPlate()).getCode());
+            }
+            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
+            ordersToServer.append(this.currentTable.getNumber());
+            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
+            ordersToServer.append(orderTime);
+            ordersToServer.append(this.applicationConfig.getOrderLineDelimiter());
+        }
+
+        boolean retryConnection = true;
+        String networkAnswer;
+
+        while (retryConnection) {
+            retryConnection = false;
+
+            networkAnswer = this.networkSender.sendString(ordersToServer.toString());
+
+            if (networkAnswer == null) {
+                Object[] options = {
+                    "Yes, retry the connection",
+                    "No, cancel"
+                };
+                int answer = JOptionPane.showOptionDialog(
+                    this,
+                    "The connection couldn't be established with the kitchen "
+                        + "manager. Do you want to retry establishing the "
+                        + "connection?",
+                    "No network connection",
+                    JOptionPane.YES_NO_OPTION,
+                    JOptionPane.QUESTION_MESSAGE,
+                    // Do not use a custom Icon.
+                    null,
+                    // Specifies the titles of the buttons.
+                    options,
+                    // Use default button title.
+                    options[0]);
+                if (answer == JOptionPane.CLOSED_OPTION ||
+                    answer == JOptionPane.NO_OPTION) {
+                    return;
+                }
+                retryConnection = true;
+                this.startNetworkConnection();
+                continue;
+            }
+
+            if (!networkAnswer.equals(
+                this.applicationConfig.getKitchenOrderAcceptedPayload())) {
+
+                StringSlicer parsedAnswer = new StringSlicer(
+                    networkAnswer,
+                    this.applicationConfig.getOrderFieldDelimiter());
+                ArrayList<String> answerFields = parsedAnswer.listComponents();
+                if (!answerFields.get(0).equals(
+                    this.applicationConfig.getKitchenOrderDeclinedPayload())) {
+
+                    JOptionPane.showMessageDialog(
+                        this,
+                        "Something nasty could happen on the network as "
+                            + "answers for refused orders must contain \""
+                            + this.applicationConfig.getKitchenOrderDeclinedPayload()
+                            + "\". We received \"" + answerFields.get(0)
+                            + "\" instead.",
+                        "Invalid answer detected",
+                        JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                OrderDeclinedReasonGui orderDeclinedGui = new OrderDeclinedReasonGui(
+                    this, answerFields.get(1));
+                orderDeclinedGui.setVisible(true);
+                return;
+            }
+
+            JOptionPane.showMessageDialog(
+                this,
+                "The order has been received properly by the kitchen.",
+                "Order received",
+                JOptionPane.INFORMATION_MESSAGE);
+
+            this.ordersSentCheckbox.setEnabled(true);
+        }
+
+        // Update UI
         for (int i = 0; i < this.ordersToSendListModel.size(); i++) {
             this.servedPlatesListModel.addElement(ordersToSendListModel.get(i));
         }
+        this.ordersToSendListModel.clear();
 
+        // Update model
         this.currentTable.setEffectiveCovers(this.effectiveCovers);
         for (PlateOrder order: this.ordersToSend) {
             this.currentTable.addOrder(order);
             this.billAmount.add(order.getPrice());
-            // Effective sending to the other application (socket, IPC, whatever).
-            System.out.println("Sending " + order.getQuantity() + "x " + order.getPlate().getLabel());
         }
-        this.ordersToSendListModel.clear();
         this.ordersToSend.clear();
         this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
-        // Update drinks type depending if there are other plates sent or not
+        // Update the type of drinks depending if there are other plates sent
+        // or not. Applies to the UI (In the served plates list) and in the
+        // in-memory model.
         String drinkLine;
         if (this.currentTable.getEffectiveCovers() == 1) {
             drinkLine = "Drinks with plate";
@@ -769,14 +1037,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 plateOrder.getPlate().setLabel(drinkLine);
                 this.servedPlatesListModel.set(i,
                     plateOrder.getQuantity() + " " +
-                    plateOrder.getPlate().getLabel() + " (" +
-                    plateOrder.getPlate().getPrice() + " " +
+                        plateOrder.getPlate().getLabel() + " (" +
+                        plateOrder.getPlate().getPrice() + " " +
                     this.currencySymbol + ")");
-                System.out.println("Changing drinks type...");
             }
         }
-
-        this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
@@ -820,7 +1085,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                         "Unable to find the user \""
                         + login.getUsername()
                         + "\". Retry.",
-                        this.applicationName,
+                        this.applicationConfig.getRestaurantName(),
                         JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
@@ -830,14 +1095,15 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                         "The password for the user \""
                         + login.getUsername()
                         + " \"is incorrect. Retry.",
-                        this.applicationName,
+                        this.applicationConfig.getRestaurantName(),
                         JOptionPane.ERROR_MESSAGE);
                     continue;
                 }
                 // Change the waiter
                 newWaiterName = login.getUsername();
                 this.currentTable.setWaiterName(login.getUsername());
-                this.setTitle(this.applicationName + ": " + this.currentTable.getWaiterName());
+                this.setTitle(this.applicationConfig.getRestaurantName()
+                    + ": " + this.currentTable.getWaiterName());
 
                 login.dispose();
                 break;
@@ -873,6 +1139,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.ordersToSendListModel.clear();
         this.ordersToSend.clear();
         this.servedPlatesListModel.clear();
+        this.platesQuantityTextfield.setText("X");
+        this.dessertsQuantityTextfield.setText("X");
+        this.drinksAmountTextfield.setText("X");
+        this.effectiveCovers = 0;
         // Populate UI with the values of the new table
         this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
         this.effectiveCoversValueLabel.setText(String.valueOf(this.currentTable.getEffectiveCovers()));
@@ -882,6 +1152,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 String code;
                 if (order.getPlate() instanceof MainCourse) {
                     code = ((MainCourse)order.getPlate()).getCode();
+                    // Should have been above in the code structure we have,
+                    // but avoid an additional log(n) cost by browsing the
+                    // orders a second time for barely nothing.
+                    this.effectiveCovers++;
                 } else {
                     code = ((Dessert)order.getPlate()).getCode();
                 }
@@ -913,14 +1187,18 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private void saveCurrentTable() {
         if (this.ordersToSend.size() > 0) {
             Object[] options = {
-                "No, cancel",
-                "Yes, change table and loose my non sent orders"
+                "Yes, change table and loose my non sent orders",
+                "No, cancel"
             };
             String remainingToSend;
             if (this.ordersToSend.size() == 1) {
-                remainingToSend = "There is one order that hasn't been sent yet. Changing table will loose them. Do you want to change table?";
+                remainingToSend = "There is one order that hasn't been sent yet."
+                    + " Changing table will loose them. "
+                    + "Do you want to change table?";
             } else {
-                remainingToSend = "There are " + this.ordersToSend.size() + " orders that haven't been sent yet. Changing table will loose them. Do you want to change table?";
+                remainingToSend = "There are " + this.ordersToSend.size()
+                    + " orders that haven't been sent yet. Changing table will "
+                    + "loose them. Do you want to change table?";
             }
 
             int answer = JOptionPane.showOptionDialog(
@@ -938,10 +1216,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
             // Cancel the table switch
             if (answer == JOptionPane.CLOSED_OPTION ||
-                // Don't forget the YES and NO constant are inverted because
-                // we really wanted to have the No statement at the left
-                // while Swing uses Yes at the right
-                answer == JOptionPane.YES_OPTION) {
+                // If you are not using GTK, don't forget the YES and NO
+                // constant are inverted because we really wanted to have the
+                // No statement at the left while Swing uses Yes at the right.
+                // We changed back to NO here as GTK should be enabled.
+                answer == JOptionPane.NO_OPTION) {
 
                 // Reselect previous table in the combobox item.
                 // This has as effect to retrigger this ItemEvent.
@@ -973,6 +1252,14 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         } else {
             this.savedTables.add(this.currentTable);
         }
+    }
+
+    private void exitApplication() {
+        if (this.networkSender != null) {
+            this.networkSender.setEndSending();
+        }
+        this.dispose();
+        System.out.println("Application exited.");
     }
 
     private void platesQuantityTextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesQuantityTextfieldActionPerformed
@@ -1091,7 +1378,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     public void keyPressed(KeyEvent ke) {
         if (ke.getKeyCode() == KeyEvent.VK_ESCAPE) {
             this.quitApplicationWithConfirm();
-        } else if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+            return;
+        }
+
+        if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
             if (ke.getSource() == this.platesQuantityTextfield) {
                 this.orderPlate();
             } else if (ke.getSource() == this.dessertsQuantityTextfield) {
@@ -1099,6 +1389,11 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             } else if (ke.getSource() == this.drinksAmountTextfield) {
                 this.orderDrinks();
             }
+            return;
+        }
+
+        if (ke.getKeyCode() == KeyEvent.VK_DELETE) {
+            this.removeFromOrdersToSend();
         }
     }
 

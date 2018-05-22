@@ -43,14 +43,24 @@ public class PlateOrder {
     public void setPlate(Plate plate) {
         this.plate = plate;
     }
-    
+
+    public void addQuantity(int quantity) {
+        this.setQuantity(this.getQuantity() + quantity);
+    }
+
+    public void removeQuantity() {
+        if (this.getQuantity() > 0) {
+            this.setQuantity(this.getQuantity() - 1);
+        }
+    }
+
     public void setQuantity(int quantity) {
         this.quantity = quantity;
         this.price = new BigDecimal(this.plate.getPrice())
             .multiply(new BigDecimal(quantity))
             .setScale(2, RoundingMode.HALF_EVEN);
     }
-    
+
     public Plate getPlate() {
         return plate;
     }

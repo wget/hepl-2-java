@@ -44,6 +44,7 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
 
         setLocationRelativeTo(null);
         this.setResizable(false);
+        this.setIconImage(parent.getIconImage());
         
         this.waiterLoginTextfield.addKeyListener(this);
         this.waiterPasswordTextfield.addKeyListener(this);
