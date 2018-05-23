@@ -25,6 +25,7 @@ import javax.swing.JOptionPane;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class LoginGui extends javax.swing.JDialog implements KeyListener {
     
     private String username;

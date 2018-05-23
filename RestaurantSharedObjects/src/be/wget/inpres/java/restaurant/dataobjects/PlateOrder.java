@@ -18,6 +18,7 @@ package be.wget.inpres.java.restaurant.dataobjects;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Date;
 
 /**
  *
@@ -27,6 +28,8 @@ public class PlateOrder {
     protected Plate plate;
     protected int quantity;
     protected BigDecimal price;
+    protected String comment;
+    protected Date orderDate;
 
     public PlateOrder(Plate plate, int quantity) {
         this.plate = plate;
@@ -38,6 +41,8 @@ public class PlateOrder {
             // commercial pieces of software)
             // src.: https://introcs.cs.princeton.edu/java/91float/
             .setScale(2, RoundingMode.HALF_EVEN);
+        this.comment = new String();
+        this.orderDate = new Date();
     }
 
     public void setPlate(Plate plate) {
@@ -71,5 +76,21 @@ public class PlateOrder {
 
     public BigDecimal getPrice() {
         return this.price;
+    }
+
+    public String getComment() {
+        return comment;
+    }
+
+    public void setComment(String comment) {
+        this.comment = comment;
+    }
+
+    public Date getOrderDate() {
+        return orderDate;
+    }
+
+    public void setOrderDate(Date orderDate) {
+        this.orderDate = orderDate;
     }
 }

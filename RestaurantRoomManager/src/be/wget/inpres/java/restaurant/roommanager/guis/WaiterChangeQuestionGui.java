@@ -23,6 +23,7 @@ import java.awt.event.KeyListener;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class WaiterChangeQuestionGui extends javax.swing.JDialog implements KeyListener {
 
     private boolean waiterChanging;

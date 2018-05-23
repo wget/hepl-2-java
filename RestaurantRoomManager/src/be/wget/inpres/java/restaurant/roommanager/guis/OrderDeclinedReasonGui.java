@@ -20,6 +20,7 @@ package be.wget.inpres.java.restaurant.roommanager.guis;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class OrderDeclinedReasonGui extends javax.swing.JDialog {
 
     /**

@@ -28,6 +28,7 @@ import javax.swing.JOptionPane;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class BillGui extends javax.swing.JDialog implements KeyListener, ItemListener {
 
     private boolean billPaid;

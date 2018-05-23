@@ -3,3 +3,7 @@ build/
 nbbuild/
 dist/
 nbdist/
+/RestaurantRoomManager/nbproject/private/
+/RestaurantKitchenManager/nbproject/private/
+/RestaurantConfigLibrary/nbproject/private/
+/RestaurantSharedObjects/nbproject/private/

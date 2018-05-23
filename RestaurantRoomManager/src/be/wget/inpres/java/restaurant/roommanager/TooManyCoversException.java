@@ -20,6 +20,7 @@ package be.wget.inpres.java.restaurant.roommanager;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class TooManyCoversException extends Exception {
     
     public TooManyCoversException(int numberOfCovers, int maxCovers) {

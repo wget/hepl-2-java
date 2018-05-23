@@ -24,7 +24,11 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultPlatesImporter;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolEncoder;
 import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
@@ -36,23 +40,30 @@ import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Locale;
+import java.util.TimeZone;
 import javax.imageio.ImageIO;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JOptionPane;
+import javax.swing.ListModel;
 import network.NetworkBasicClient;
 
 /**
  *
  * @author wget
  */
-public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyListener {
+@SuppressWarnings("serial")
+public class RestaurantRoomManagerGui
+    extends javax.swing.JFrame
+    implements KeyListener {
 
     private final String currencySymbol = "EUR";
 
@@ -95,7 +106,8 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
         try {
             this.applicationIcon = new ImageIcon(ImageIO.read(
-                RestaurantRoomManagerGui.class.getResourceAsStream("/assets/appIcon.png")));
+                RestaurantRoomManagerGui.class.getResourceAsStream(
+                    "/be/wget/inpres/java/restaurant/assets/appIcon.png")));
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(
                 this,
@@ -122,7 +134,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.ordersToSendListModel = new DefaultListModel<>();
         this.ordersToSendList.setModel(this.ordersToSendListModel);
         this.servedPlatesListModel = new DefaultListModel<>();
-        this.servedPlatesList.setModel(servedPlatesListModel);
+        this.servedPlatesList.setModel(this.servedPlatesListModel);
         this.selectedTableIndex = 0;
         this.billAmount = new BigDecimal("0");
         this.effectiveCovers = 0;
@@ -172,18 +184,14 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         this.tables.put("D5", new Table("D5", 2));
         
         // Populate list of plates
-        this.defaultMainCourses = new ArrayList<>();
-        this.defaultMainCourses.add(new MainCourse("Veau au rollmops sauce Herve", 15.75, "VRH"));
-        this.defaultMainCourses.add(new MainCourse("Cabillaud chantilly de Terre Neuve", 16.9, "CC"));
-        this.defaultMainCourses.add(new MainCourse("Fillet de boeuf Enfer des papilles", 16.8, "FE"));
-        this.defaultMainCourses.add(new MainCourse("Gruyère farci aux rognons-téquila", 13.4, "GF"));
-        this.defaultMainCourses.add(new MainCourse("Potée auvergnate au miel", 12.5, "PA"));
-        this.defaultDesserts = new ArrayList<>();
-        this.defaultDesserts.add(new Dessert("Mousse au chocolat salé", 5.35, "D_MC"));
-        this.defaultDesserts.add(new Dessert("Sorbet citron courgette Colonel", 6.85, "D_SC"));
-        this.defaultDesserts.add(new Dessert("Duo de crêpes Juliettes", 6, "D_CJ"));
-        this.defaultDesserts.add(new Dessert("Dame grise", 5.55, "D_DG"));
-        this.defaultDesserts.add(new Dessert("Crème très brulée carbonne", 7, "D_CB"));
+        this.defaultMainCourses = new DefaultMainCoursesImporter(
+            this.applicationConfig,
+            "plates.default.txt")
+                .getDefaultPlates();
+        this.defaultDesserts = new DefaultDessertsImporter(
+            this.applicationConfig,
+            "")
+                .getDefaultPlates();
     }
     
     private void initUXEvents() {
@@ -263,7 +271,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                         + "\". Quitting...",
                     this.applicationConfig.getRestaurantName(),
                     JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
+                this.exitApplication();
             }
 
             if (!hashedPassword.equals(
@@ -272,10 +280,10 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     this,
                     "The password for the user \""
                         + login.getUsername()
-                        + " \"is incorrect. Quitting...",
+                        + "\" is incorrect. Quitting...",
                     this.applicationConfig.getRestaurantName(),
                     JOptionPane.ERROR_MESSAGE);
-                System.exit(0);
+                this.exitApplication();
             }
             break;
         }
@@ -651,7 +659,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     .addComponent(ordersSentCheckbox)
                     .addComponent(ordersReadyCheckbox)
                     .addComponent(readAvailablePlatesButton))
-                .addContainerGap(16, Short.MAX_VALUE))
+                .addContainerGap(15, Short.MAX_VALUE))
         );
 
         pack();
@@ -665,10 +673,28 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
         Plate selectedPlate = this.defaultMainCourses.get(
             this.platesCombobox.getSelectedIndex());
         int plateQuantityInput = 0;
+        String orderComment = this.platesCommentTextfield.getText();
 
         try {
             plateQuantityInput = Integer.parseInt(
                 this.platesQuantityTextfield.getText());
+            
+            if (orderComment.toLowerCase().contains(
+                applicationConfig.getOrderFieldDelimiter().toLowerCase()) ||
+                orderComment.toLowerCase().contains(
+                applicationConfig.getOrderLineDelimiter().toLowerCase()) ||
+                orderComment.toLowerCase().contains("\\n") ||
+                orderComment.toLowerCase().contains("\\r")) {
+                JOptionPane.showMessageDialog(getParent(),
+                    "The comment you typed cannot contain the following strings: \""
+                        + this.applicationConfig.getOrderFieldDelimiter().toLowerCase()
+                        + " \" and \""
+                        + this.applicationConfig.getOrderLineDelimiter().toLowerCase()
+                        + "\" nor new line characters.",
+                    "Invalid characters",
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
         
             if (plateQuantityInput <= 0) {
                 JOptionPane.showMessageDialog(this,
@@ -685,7 +711,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                     this.currentTable.getMaxCovers());
             }
             
-            this.orderCurrentPlate(selectedPlate, plateQuantityInput);
+            this.orderCurrentPlate(selectedPlate, plateQuantityInput, orderComment);
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -744,14 +770,14 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
 
-            this.orderCurrentPlate(selectedPlate, plateQuantityInput);
+            this.orderCurrentPlate(selectedPlate, plateQuantityInput, orderComment);
         }
     }
 
-    private void orderCurrentPlate(Plate plate, int quantity) {
+    private void orderCurrentPlate(Plate plate, int quantity, String comment) {
         // Update model
         int i = 0;
-        Boolean itemChanged = false;
+        Boolean orderFound = false;
         PlateOrder order = null;
         for (; i < this.ordersToSend.size(); i++) {
             order = this.ordersToSend.get(i);
@@ -759,26 +785,34 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 plate instanceof MainCourse) {
                 if (((MainCourse)order.getPlate()).getCode().equals(
                     ((MainCourse)plate).getCode())) {
-                    order.addQuantity(quantity);
-                    this.ordersToSend.set(i, order);
-                    itemChanged = true;
+                    orderFound = true;
                     break;
                 }
             } else if (order.getPlate() instanceof Dessert &&
                        plate instanceof Dessert) {
                 if (((Dessert)order.getPlate()).getCode().equals(
                     ((Dessert)plate).getCode())) {
-                    order.addQuantity(quantity);
-                    this.ordersToSend.set(i, order);
-                    itemChanged = true;
+                    orderFound = true;
                     break;
                 }
             }
         }
 
-        if (!itemChanged) {
+        if (!orderFound) {
             order = new PlateOrder(plate, quantity);
-            this.ordersToSend.add(order);
+        }
+
+        // Prevent erasing the previous comment if we are modifying an order
+        // and we do not respecify the order comment.
+        if (!comment.isEmpty()) {
+            order.setComment(comment);
+        }
+        
+        if (!orderFound) {
+            this.ordersToSend.add(order);            
+        } else {
+            order.addQuantity(quantity);
+            this.ordersToSend.set(i, order);
         }
 
         if (plate instanceof MainCourse) {
@@ -790,21 +824,19 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             .setScale(2, RoundingMode.HALF_EVEN));
 
         // Update UI
+        String plateLabel = order.getPlate().getLabel();
         String plateCode;
-        String plateLabel;
         if (plate instanceof MainCourse) {
             plateCode = ((MainCourse)order.getPlate()).getCode();
-            plateLabel = ((MainCourse)order.getPlate()).getLabel();
         } else {
             plateCode = ((Dessert)order.getPlate()).getCode();
-            plateLabel = ((Dessert)order.getPlate()).getLabel();
         }
         String orderLine = order.getQuantity() + " " +
             plateCode + ": " +
             plateLabel + " (" +
             order.getPrice().toString() + " " +
             this.currencySymbol + ")";
-        if (!itemChanged) {
+        if (!orderFound) {
             this.ordersToSendListModel.addElement(orderLine);
         } else {
             this.ordersToSendListModel.setElementAt(orderLine, i);
@@ -821,11 +853,31 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     private void orderDessert() {
         Plate dessert;
         int dessertQuantity = 0;
+        String orderComment;
         try {
             dessert = this.defaultDesserts.get(
                 this.dessertsCombobox.getSelectedIndex());
             dessertQuantity = Integer.parseInt(
                 this.dessertsQuantityTextfield.getText());
+            
+            orderComment = this.dessertsCommentsTextfield.getText();
+            
+            if (orderComment.toLowerCase().contains(
+                applicationConfig.getOrderFieldDelimiter().toLowerCase()) ||
+                orderComment.toLowerCase().contains(
+                applicationConfig.getOrderLineDelimiter().toLowerCase()) ||
+                orderComment.toLowerCase().contains("\\n") ||
+                orderComment.toLowerCase().contains("\\r")) {
+                JOptionPane.showMessageDialog(getParent(),
+                    "The comment you typed cannot contain the following strings: \""
+                        + this.applicationConfig.getOrderFieldDelimiter().toLowerCase()
+                        + " \" and \""
+                        + this.applicationConfig.getOrderLineDelimiter().toLowerCase()
+                        + "\" nor new line characters.",
+                    "Invalid characters",
+                    JOptionPane.ERROR_MESSAGE);
+                return;
+            }
         
             if (dessertQuantity <= 0) {
                 JOptionPane.showMessageDialog(this,
@@ -835,7 +887,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
                 return;
             }
             
-            this.orderCurrentPlate(dessert, dessertQuantity);
+            this.orderCurrentPlate(dessert, dessertQuantity, orderComment);
         
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
@@ -902,8 +954,7 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
             plateLabel + " (" +
             order.getPrice().toString() + " " +
             this.currencySymbol + ")";
-        ((DefaultListModel)this.ordersToSendList.getModel())
-            .setElementAt(orderLine, selectedOrder);
+        this.ordersToSendListModel.setElementAt(orderLine, selectedOrder);
     }
 
     private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
@@ -912,35 +963,23 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
 
-        // Effective sending to the other application (socket, IPC, whatever).
-        StringBuilder ordersToServer = new StringBuilder();
-        DateFormat df = DateFormat.getDateTimeInstance(
-        DateFormat.SHORT, DateFormat.SHORT);
-        String orderTime = df.format(new Date());
-        for (PlateOrder order: this.ordersToSend) {
-            ordersToServer.append(order.getQuantity());
-            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
-            if (order.getPlate() instanceof MainCourse) {
-                ordersToServer.append(((MainCourse)order.getPlate()).getCode());
-            } else {
-                ordersToServer.append(((Dessert)order.getPlate()).getCode());
-            }
-            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
-            ordersToServer.append(this.currentTable.getNumber());
-            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
-            ordersToServer.append(orderTime);
-            ordersToServer.append(this.applicationConfig.getOrderLineDelimiter());
-        }
+        NetworkProtocolEncoder encoder = new NetworkProtocolEncoder(
+            this.applicationConfig, this.currentTable, this.ordersToSend);
+        String request = encoder.encodeRequest();
 
         boolean retryConnection = true;
-        String networkAnswer;
+        String networkAnswer = "";
 
         while (retryConnection) {
             retryConnection = false;
 
-            networkAnswer = this.networkSender.sendString(ordersToServer.toString());
+            if (this.networkSender != null) {
+                try {
+                    networkAnswer = this.networkSender.sendString(request);
+                } catch (Exception e) {}
+            }
 
-            if (networkAnswer == null) {
+            if (this.networkSender == null || networkAnswer == null) {
                 Object[] options = {
                     "Yes, retry the connection",
                     "No, cancel"
@@ -1255,10 +1294,13 @@ public class RestaurantRoomManagerGui extends javax.swing.JFrame implements KeyL
     }
 
     private void exitApplication() {
-        if (this.networkSender != null) {
-            this.networkSender.setEndSending();
-        }
+        try {
+            if (this.networkSender != null) {
+                this.networkSender.setEndSending();
+            }
+        } catch (Exception e) {}
         this.dispose();
+        System.exit(0);
         System.out.println("Application exited.");
     }
 
