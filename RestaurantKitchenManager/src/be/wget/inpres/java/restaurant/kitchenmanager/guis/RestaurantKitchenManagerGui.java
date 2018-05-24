@@ -19,17 +19,18 @@ package be.wget.inpres.java.restaurant.kitchenmanager.guis;
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import be.wget.inpres.java.restaurant.dataobjects.Dessert;
 import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
+import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkOrderProtocolMalformedFieldException;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkOrderProtocolUnexpectedFieldException;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolDecoder;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderReceiver;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
+import java.awt.KeyboardFocusManager;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -39,6 +40,7 @@ import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableModel;
+import network.NetworkBasicClient;
 import network.NetworkBasicServer;
 
 /**
@@ -50,12 +52,16 @@ public class RestaurantKitchenManagerGui
         implements TableModelListener,
                    ListSelectionListener {
 
-    private NetworkBasicServer serverNetworkConnection;
+    private NetworkBasicServer networkReceiver;
+    private NetworkBasicClient networkSender;
     private RestaurantConfig applicationConfig;
     private Icon applicationIcon;
     private HashMap<String, MainCourse> defaultMainCourses;
     private HashMap<String, Dessert> defaultDesserts;
-    private ArrayList<Table> newTableOrders;
+
+    private ArrayList<Table> tablesModel;
+    private ArrayList<Table> tablesModelTotal;
+    private ArrayList<Table> newTablesOrders;
     private int platesReceivedTableModelSizeBefore;
     private int platesReceivedTableModelSizeAfter;
     private int platesBeingPreparedTableModelSizeBefore;
@@ -121,9 +127,11 @@ public class RestaurantKitchenManagerGui
             this.applicationConfig,
             "")
                 .getDefaultPlatesHashMap();
-        
-        this.newTableOrders = new ArrayList<>();
-        this.startServer();
+
+        this.tablesModel = new ArrayList<>();
+        this.tablesModelTotal = new ArrayList<>();
+        this.newTablesOrders = new ArrayList<>();
+        this.startNetworkServerConnection();
     }
 
     /**
@@ -298,8 +306,11 @@ public class RestaurantKitchenManagerGui
 
     private void orderViewButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_orderViewButtonActionPerformed
 
-        String request = this.serverNetworkConnection.getMessage();
-        this.newTableOrders.clear();
+        if (this.networkSender == null) {
+            this.startNetworkClientConnection();
+        }
+
+        String request = this.networkReceiver.getMessage();
         // RIEN is provided by the underlying networking lib provided by the
         // teacher. Cannot modify it to have a more elegant English based
         // application.
@@ -312,33 +323,57 @@ public class RestaurantKitchenManagerGui
             return;
         }
         
-        NetworkProtocolDecoder parser = new NetworkProtocolDecoder(
+        NetworkProtocolOrderReceiver parser = new NetworkProtocolOrderReceiver(
             this.applicationConfig,
             this.defaultMainCourses,
             this.defaultDesserts,
             request);
         try {
-            this.newTableOrders = parser.getTables();
-        } catch (NetworkOrderProtocolUnexpectedFieldException |
-                 NetworkOrderProtocolMalformedFieldException ex) {
+            this.newTablesOrders.addAll(parser.getTables());
+                    System.out.println("DEBUG WE ARE HERE");
+        System.out.println("WEBUG SIZE newTableOrders: " + this.newTablesOrders.size());
+        System.out.println("WEBUG SIZE newTableOrders orders size: " + this.newTablesOrders.get(0).getOrders().size());
+        } catch (NetworkProtocolUnexpectedFieldException |
+                 NetworkProtocolMalformedFieldException ex) {
             JOptionPane.showMessageDialog(
                 this,
                 "An error occurred while parsing the received order. " +
                     "The order has been declined.",
                 this.applicationConfig.getRestaurantName(),
                 JOptionPane.WARNING_MESSAGE);
-            this.serverNetworkConnection.sendMessage(
+            this.networkReceiver.sendMessage(
                 this.applicationConfig.getKitchenOrderDeclinedPayload() +
                 this.applicationConfig.getOrderFieldDelimiter() +
                 "NETWORK_ISSUE");
             return;
         }
         
+        // Update model
+        boolean tableFound = false;
+        for (Table newTable: this.newTablesOrders) {
+            System.out.println("DEBUG newTable received : " + newTable.getNumber());
+            tableFound = false;
+            for (Table table: this.tablesModelTotal) {
+                System.out.println("DEBUG checking with table : " + table.getNumber());
+                if (table.getNumber().equals(newTable.getNumber())) {
+                    tableFound = true;
+                    for (PlateOrder order: newTable.getOrders()) {
+                        System.out.println("DEBUG adding order");
+                        table.addOrder(order);
+                    }
+                }
+            }
+            if (!tableFound) {
+                System.out.println("DEBUG adding order (table not found): ");
+                this.tablesModelTotal.add(newTable);
+            }
+        }
+
         this.populateUi(request);
     }//GEN-LAST:event_orderViewButtonActionPerformed
 
     private void orderAcceptButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_orderAcceptButtonActionPerformed
-        if (this.newTableOrders.isEmpty()) {
+        if (this.newTablesOrders.isEmpty()) {
             JOptionPane.showMessageDialog(
                 this,
                 "No order to accept as no new order has been received yet.",
@@ -346,12 +381,16 @@ public class RestaurantKitchenManagerGui
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
-        this.serverNetworkConnection.sendMessage(
+
+        this.tablesModel = this.tablesModelTotal;
+
+        this.networkReceiver.sendMessage(
             this.applicationConfig.getKitchenOrderAcceptedPayload());
+        this.newTablesOrders.clear();
     }//GEN-LAST:event_orderAcceptButtonActionPerformed
 
     private void orderDeclineButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_orderDeclineButtonActionPerformed
-        if (this.newTableOrders.isEmpty()) {
+        if (this.newTablesOrders.isEmpty()) {
             JOptionPane.showMessageDialog(
                 this,
                 "No order to decline as no new order has been received yet.",
@@ -359,49 +398,84 @@ public class RestaurantKitchenManagerGui
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
+
+        // Specify reason
         SpecifyReasonOrderDeclinedGui orderRefusedGui =
             new SpecifyReasonOrderDeclinedGui(this, this.applicationConfig);
+        orderRefusedGui.setLocationRelativeTo(this);
         orderRefusedGui.setVisible(true);
-        this.serverNetworkConnection.sendMessage(
+        this.networkReceiver.sendMessage(
             this.applicationConfig.getKitchenOrderDeclinedPayload() +
             this.applicationConfig.getOrderFieldDelimiter() +
             orderRefusedGui.getOrderRefusedReason());
         orderRefusedGui.dispose();
-        
+
+        // Update model
+        this.tablesModelTotal = this.tablesModel;
+        this.newTablesOrders.clear();
+
+        // Update UI
         PlatesReceivedTableModel platesReceivedTableModel =
             (PlatesReceivedTableModel)platesReceivedTable.getModel();
         PlatesBeingPreparedTableModel platesBeingPreparedTableModel =
             (PlatesBeingPreparedTableModel)platesBeingPreparedTable.getModel();
         
+        // Having another variable (j) is needed here because sicne we are
+        // removing lines from the table model, the iteam number remains at the
+        // same location since the row are being shifted.
+        // Playing around with an iterator would have been cleaner though and
+        // the way to go, but time is lacking here...
         for (int i = this.platesReceivedTableModelSizeBefore, j = i;
              i < this.platesReceivedTableModelSizeAfter;
              i++) {
+            System.out.println("DEBUG removeRow from platesReceived: " + i);
             platesReceivedTableModel.removeRow(j);
         }
         for (int i = this.platesBeingPreparedTableModelSizeBefore, j = i;
              i < this.platesBeingPreparedTableModelSizeAfter;
              i++) {
+            System.out.println("DEBUG removeRow from platesBeingPrepared: " + i);
             platesBeingPreparedTableModel.removeRow(j);
         }
-        this.newTableOrders.clear();
     }//GEN-LAST:event_orderDeclineButtonActionPerformed
 
     private void orderReadyNotifyButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_orderReadyNotifyButtonActionPerformed
         DefaultTableModel platesBeingPreparedTableModel =
             (DefaultTableModel)platesBeingPreparedTable.getModel();
-        ArrayList<String> ordersReady;
+        ArrayList<PlateOrder> ordersToNotify = new ArrayList<>();
         boolean orderBeingPrepared = false;
-        int ordersReadyCount = 0;
         for (int i = 0; i < platesBeingPreparedTableModel.getRowCount(); i++) {
-            orderBeingPrepared = (Boolean)platesBeingPreparedTableModel.getValueAt(i, 4);
-            if (orderBeingPrepared) {
-                System.out.println(platesBeingPreparedTableModel.getValueAt(i, 1).toString() + " is being prepared");
-                ordersReadyCount++;
-            } else {
-                System.out.println(platesBeingPreparedTableModel.getValueAt(i, 1).toString() + " is NOT being prepared");
+            orderBeingPrepared = (Boolean)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.READY_TO_SERVE);
+            if (!orderBeingPrepared) {
+                continue;
             }
+
+            String plateCode = (String)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.PLATE_CODE);
+            Plate newPlate = null;
+            for (String mainCourseCode: this.defaultMainCourses.keySet()) {
+                if (this.defaultMainCourses.get(mainCourseCode).getCode()
+                    .equals(plateCode)) {
+                    newPlate = this.defaultMainCourses.get(mainCourseCode);
+                }
+            }
+            if (newPlate == null) {
+                for (String dessertCode: this.defaultDesserts.keySet()) {
+                    if (this.defaultDesserts.get(dessertCode).getCode()
+                        .equals(plateCode)) {
+                        newPlate = this.defaultDesserts.get(dessertCode);
+                    }
+                }
+            }
+
+            int quantity = (int)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.QUANTITY);
+            PlateOrder newOrder = new PlateOrder(newPlate, quantity);
+            ordersToNotify.add(newOrder);
         }
-        if (ordersReadyCount == 0) {
+
+        if (ordersToNotify.isEmpty()) {
             JOptionPane.showMessageDialog(
                 this,
                 "No order to announce as no new order has been marked as ready to serve yet.",
@@ -409,30 +483,36 @@ public class RestaurantKitchenManagerGui
                 JOptionPane.WARNING_MESSAGE);
             return;
         }
-        
+
+        NetworkProtocolServeNotifySender networkSender =
+            new NetworkProtocolServeNotifySender(
+                this.applicationConfig, ordersToNotify);
+        String request = networkSender.encodeRequest();
+        System.out.println("DEBUG request to send: "+ request);
+        System.out.println("DEBUG getTrapServerAddress: "+ this.applicationConfig.getTrapServerAddress());
+        System.out.println("DEBUG getTrapServerPort: "+ this.applicationConfig.getTrapServerPort());
+
+        this.networkSender.sendStringWithoutWaiting(request);
     }//GEN-LAST:event_orderReadyNotifyButtonActionPerformed
-    
-    private void startServer() {
-        int port;
-        try {
-            port = new RestaurantConfig().getServerPort();
-        
-            System.out.println("DEBUG Server listening on " + port);
-            this.serverNetworkConnection = new NetworkBasicServer(port, this.orderReceivedCheckbox);
-            System.out.println("Server listening on " + port);
-        
-        } catch (Exception ex) {
-            Logger.getLogger(RestaurantKitchenManagerGui.class.getName()).log(Level.SEVERE, null, ex);
-        }
+
+    private void startNetworkClientConnection() {
+        this.networkSender = new NetworkBasicClient(
+            this.applicationConfig.getTrapServerAddress(),
+            this.applicationConfig.getTrapServerPort());
     }
-    
+
+    private void startNetworkServerConnection() {
+        this.networkReceiver = new NetworkBasicServer(this.applicationConfig.getServerPort(), this.orderReceivedCheckbox);
+        System.out.println("Server listening on " + this.applicationConfig.getServerPort());
+    }
+
     private void populateUi(String receivedRequest) {
 
         this.orderReceivedLabel.setSize(
             this.getSize().width - this.orderDeclineButton.getSize().width - 50,
             this.getSize().height - this.orderDeclineButton.getSize().height - 50);
         this.orderReceivedLabel.setText(">> " + receivedRequest);
-        
+
         PlatesReceivedTableModel platesReceivedTableModel =
             (PlatesReceivedTableModel)platesReceivedTable.getModel();
         PlatesBeingPreparedTableModel platesBeingPreparedTableModel =
@@ -441,10 +521,11 @@ public class RestaurantKitchenManagerGui
         platesBeingPreparedTableModelSizeBefore = platesBeingPreparedTableModel.getRowCount();
         int platesBeingPreparedTableRow = platesBeingPreparedTableModelSizeBefore;
         
-        for (Table table: this.newTableOrders) {
+        for (Table table: this.newTablesOrders) {
             
             for (PlateOrder order: table.getOrders()) {
                 
+                 System.out.println("DEBUG populateUI adding : " + order.getPlate().getLabel());
                 ArrayList<Object> platesReceivedTableLine = new ArrayList<>();
                 ArrayList<Object> platesBeingPreparedTableLine = new ArrayList<>();
                 
@@ -510,7 +591,7 @@ public class RestaurantKitchenManagerGui
                 platesBeingPreparedTableRow++;
             }
         }
-        
+
         this.platesReceivedTableModelSizeAfter = 
             platesReceivedTableModel.getRowCount();
         this.platesBeingPreparedTableModelSizeAfter = 
@@ -595,11 +676,20 @@ public class RestaurantKitchenManagerGui
             return;
         }
 
-        String plateCode = (String)platesReceivedTable.getModel().getValueAt(
+        // Happens when reordering table content or when declining order when
+        // the order has been viewed and we have list focus.
+        if (this.platesReceivedTable.getSelectedRow() == -1) {
+            return;
+        }
+
+        String plateCode = (String)this.platesReceivedTable.getModel().getValueAt(
             this.platesReceivedTable.getSelectedRow(),
             PlatesReceivedTableColumns.PLATE_CODE);
+        if (plateCode == null) {
+            return;
+        }
         PlateOrder orderWithComment = null;
-        for (Table table: this.newTableOrders) {
+        for (Table table: this.tablesModelTotal) {
             for (PlateOrder order: table.getOrders()) {
                 if (order.getPlate() instanceof MainCourse) {
                     if (((MainCourse)order.getPlate()).getCode()
@@ -607,22 +697,19 @@ public class RestaurantKitchenManagerGui
                         orderWithComment = order;
                         break;
                     }
-                } else if (order.getPlate() instanceof Dessert) {
+                } else {
                     if (((Dessert)order.getPlate()).getCode()
                         .equals(plateCode)) {
                         orderWithComment = order;
                         break;
                     }
-                } else {
-                    return;
                 }
             }
         }
-
-        if (!orderWithComment.getComment().isEmpty()) {
-            this.orderCommentTextArea.setText(orderWithComment.getComment());    
+        if (orderWithComment.getComment().isEmpty()) {
+            this.orderCommentTextArea.setText("N/A");
             return;
         }
-        this.orderCommentTextArea.setText("N/A");
+        this.orderCommentTextArea.setText(orderWithComment.getComment());
     }
 }

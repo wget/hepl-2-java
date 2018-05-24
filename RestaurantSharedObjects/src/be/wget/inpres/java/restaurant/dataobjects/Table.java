@@ -42,7 +42,11 @@ public class Table {
     public void addOrder(PlateOrder order) {
         this.orders.add(order);
     }
-    
+
+    public void removeOrder(int position) {
+        this.orders.remove(position);
+    }
+
     public void setEffectiveCovers(int covers) {
         if (covers < 1) {
             this.effectiveCovers = 1;

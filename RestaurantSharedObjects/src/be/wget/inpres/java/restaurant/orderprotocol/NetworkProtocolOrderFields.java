@@ -9,10 +9,11 @@ package be.wget.inpres.java.restaurant.orderprotocol;
  *
  * @author wget
  */
-public class NetworkOrderProtocolFields {
-    static final int QUANTITY = 0,
-    PLATE_CODE = 1,
-    TABLE_NUMBER = 2,
-    ARRIVAL_TIME = 3,
-    ORDER_COMMENT = 4;
+public class NetworkProtocolOrderFields {
+    static final int REQUEST_TYPE = 0,
+    QUANTITY = 1,
+    PLATE_CODE = 2,
+    TABLE_NUMBER = 3,
+    ARRIVAL_TIME = 4,
+    ORDER_COMMENT = 5;
 }

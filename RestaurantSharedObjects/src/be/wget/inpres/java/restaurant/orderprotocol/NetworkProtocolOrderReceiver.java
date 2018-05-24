@@ -24,7 +24,7 @@ import java.util.Locale;
  *
  * @author wget
  */
-public class NetworkProtocolDecoder {
+public class NetworkProtocolOrderReceiver {
     
     protected RestaurantConfig applicationConfig;
     protected HashMap<String, Table> defaultTables;
@@ -35,7 +35,7 @@ public class NetworkProtocolDecoder {
     protected ArrayList<Table> tables;
     protected ArrayList<PlateOrder> orders;
     
-    public NetworkProtocolDecoder(
+    public NetworkProtocolOrderReceiver(
         RestaurantConfig applicationConfig,
         HashMap<String, MainCourse> mainCourses,
         HashMap<String, Dessert> desserts,
@@ -50,8 +50,8 @@ public class NetworkProtocolDecoder {
     }
     
     protected void parseRequest()
-        throws NetworkOrderProtocolUnexpectedFieldException,
-               NetworkOrderProtocolMalformedFieldException {
+        throws NetworkProtocolUnexpectedFieldException,
+               NetworkProtocolMalformedFieldException {
         StringSlicer orderLines = new StringSlicer(
             request,
             this.applicationConfig.getOrderLineDelimiter());
@@ -61,10 +61,19 @@ public class NetworkProtocolDecoder {
                 orderLine,
                 this.applicationConfig.getOrderFieldDelimiter())
                     .listComponents();
-            System.out.println("DEBUG fields : " + orderFields);
+            try {
+                String requestType = orderFields
+                    .get(NetworkProtocolOrderFields.REQUEST_TYPE);
+                if (Integer.parseInt(requestType) !=
+                    NetworkProtocolRequestType.ORDER) {
+                    throw new NetworkProtocolMalformedFieldException();
+                }
+            } catch (Exception e) {
+                throw new NetworkProtocolMalformedFieldException();
+            }
 
             // Add orders details
-            String plateCode = orderFields.get(NetworkOrderProtocolFields.PLATE_CODE);
+            String plateCode = orderFields.get(NetworkProtocolOrderFields.PLATE_CODE);
             Plate plate;
             // This is a main course
             if (this.defaultMainCourses.get(plateCode) != null) {
@@ -73,29 +82,31 @@ public class NetworkProtocolDecoder {
             } else if (this.defaultDesserts.get(plateCode) != null) {
                 plate = this.defaultDesserts.get(plateCode);
             } else {
-                throw new NetworkOrderProtocolUnexpectedFieldException();
+                throw new NetworkProtocolUnexpectedFieldException();
             }
             
             PlateOrder order = new PlateOrder(
                 plate,
                 Integer.parseInt(
-                    orderFields.get(NetworkOrderProtocolFields.QUANTITY)));
+                    orderFields.get(NetworkProtocolOrderFields.QUANTITY)));
 
-            try {
+            if (NetworkProtocolOrderFields.ORDER_COMMENT >= orderFields.size()) {
+                order.setComment("");
+            } else {
                 order.setComment(orderFields.get(
-                    NetworkOrderProtocolFields.ORDER_COMMENT));
-            } catch (IndexOutOfBoundsException e) {}
+                    NetworkProtocolOrderFields.ORDER_COMMENT));
+            }
 
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm'Z'", Locale.ENGLISH);
             try {
-                order.setOrderDate(df.parse(orderFields.get(NetworkOrderProtocolFields.ARRIVAL_TIME)));
+                order.setOrderDate(df.parse(orderFields.get(NetworkProtocolOrderFields.ARRIVAL_TIME)));
             } catch (ParseException ex) {
-                throw new NetworkOrderProtocolMalformedFieldException();
+                throw new NetworkProtocolMalformedFieldException();
             }
          
             // Add order to table
             String tableNumber = orderFields.get(
-                NetworkOrderProtocolFields.TABLE_NUMBER);
+                NetworkProtocolOrderFields.TABLE_NUMBER);
             Table tableToAdd = null;
             for (Table table: this.tables) {
                 if (table.getNumber().equals(tableNumber)) {
@@ -116,8 +127,8 @@ public class NetworkProtocolDecoder {
     }
 
     public ArrayList<PlateOrder> getOrders()
-        throws NetworkOrderProtocolUnexpectedFieldException,
-               NetworkOrderProtocolMalformedFieldException {
+        throws NetworkProtocolUnexpectedFieldException,
+               NetworkProtocolMalformedFieldException {
         if (orders.isEmpty()) {
             this.parseRequest();
         }
@@ -125,8 +136,8 @@ public class NetworkProtocolDecoder {
     }
 
     public ArrayList<Table> getTables() 
-        throws NetworkOrderProtocolUnexpectedFieldException,
-               NetworkOrderProtocolMalformedFieldException {
+        throws NetworkProtocolUnexpectedFieldException,
+               NetworkProtocolMalformedFieldException {
         if (tables.isEmpty()) {
             this.parseRequest();            
         }

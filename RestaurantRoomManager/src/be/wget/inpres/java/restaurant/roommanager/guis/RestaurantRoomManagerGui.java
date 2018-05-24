@@ -26,35 +26,42 @@ import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
-import be.wget.inpres.java.restaurant.fileserializer.DefaultPlatesImporter;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolEncoder;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderSender;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifyReceiver;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
+import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
 import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.Locale;
-import java.util.TimeZone;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.imageio.ImageIO;
+import javax.swing.Box;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.DefaultListModel;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JFrame;
+import javax.swing.JMenu;
+import javax.swing.JMenuItem;
 import javax.swing.JOptionPane;
-import javax.swing.ListModel;
 import network.NetworkBasicClient;
+import network.NetworkBasicServer;
 
 /**
  *
@@ -62,8 +69,9 @@ import network.NetworkBasicClient;
  */
 @SuppressWarnings("serial")
 public class RestaurantRoomManagerGui
-    extends javax.swing.JFrame
-    implements KeyListener {
+    extends JFrame
+    implements KeyListener,
+               ActionListener {
 
     private final String currencySymbol = "EUR";
 
@@ -82,7 +90,15 @@ public class RestaurantRoomManagerGui
     private DefaultListModel<String> servedPlatesListModel;
     private RestaurantConfig applicationConfig;
     private NetworkBasicClient networkSender;
+    private NetworkBasicServer networkReceiver;
     private Icon applicationIcon;
+
+    private JMenu settingsMenu;
+    private JMenu helpMenu;
+    private JMenuItem systemInfosMenuItem;
+    private JMenuItem dateTimeSettingsMenuItem;
+    private JMenuItem beginnerGuideMenuItem;
+    private JMenuItem aboutMenuItem;
 
     /**
      * Creates new form Main
@@ -93,7 +109,6 @@ public class RestaurantRoomManagerGui
 
         // Additional GUI customizations
         this.initAdditionalComponents();
-        this.initUXEvents();
 
         this.populateData();
         this.initApplicationGui();
@@ -108,7 +123,7 @@ public class RestaurantRoomManagerGui
             this.applicationIcon = new ImageIcon(ImageIO.read(
                 RestaurantRoomManagerGui.class.getResourceAsStream(
                     "/be/wget/inpres/java/restaurant/assets/appIcon.png")));
-        } catch (Exception ex) {
+        } catch (IOException ex) {
             JOptionPane.showMessageDialog(
                 this,
                 "The \"assets\" folder coudn't be found.",
@@ -127,20 +142,105 @@ public class RestaurantRoomManagerGui
                 this.applicationConfig.getRestaurantName(),
                 JOptionPane.WARNING_MESSAGE);
         }
-        this.setTitle(this.applicationConfig.getRestaurantName());
-        this.setLocationRelativeTo(null);
-        this.ordersSentCheckbox.setEnabled(false);
-        this.ordersReadyCheckbox.setEnabled(false);
+
+        // Init model
         this.ordersToSendListModel = new DefaultListModel<>();
-        this.ordersToSendList.setModel(this.ordersToSendListModel);
         this.servedPlatesListModel = new DefaultListModel<>();
+
+        this.settingsMenu = new JMenu("Settings");
+        this.systemInfosMenuItem = new JMenuItem("System infos");
+        this.dateTimeSettingsMenuItem = new JMenuItem("Date-time settings");
+        this.helpMenu = new JMenu("Help");
+        this.beginnerGuideMenuItem = new JMenuItem("Beginner guide");
+        this.aboutMenuItem = new JMenuItem("About this application");
+
+        this.ordersToSendList.setModel(this.ordersToSendListModel);
         this.servedPlatesList.setModel(this.servedPlatesListModel);
         this.selectedTableIndex = 0;
         this.billAmount = new BigDecimal("0");
         this.effectiveCovers = 0;
         this.ordersToSendList.addKeyListener(this);
-        this.startNetworkConnection();
+
+        // Init UI
+        this.setTitle(this.applicationConfig.getRestaurantName());
+        this.setLocationRelativeTo(null);
+        this.ordersSentCheckbox.setEnabled(false);
+        this.ordersReadyCheckbox.setEnabled(false);
+
+        // Menu
+        // Add space to align the remaining parts of the menu to the right.
+        this.menuBar.add(Box.createHorizontalGlue());
+        this.menuBar.add(this.settingsMenu);
+        this.menuBar.add(this.helpMenu);
+        this.settingsMenu.add(this.systemInfosMenuItem);
+        this.settingsMenu.add(this.dateTimeSettingsMenuItem);
+        this.helpMenu.add(this.beginnerGuideMenuItem);
+        this.helpMenu.add(this.aboutMenuItem);
+
+        // Init UX listeners
+        this.billCheckoutButton.addKeyListener(this);
+        this.dessertsCombobox.addKeyListener(this);
+        this.dessertsCommentsTextfield.addKeyListener(this);
+        this.dessertsOrderButton.addKeyListener(this);
+        this.dessertsQuantityTextfield.addKeyListener(this);
+        this.drinksAddButton.addKeyListener(this);
+        this.drinksAmountTextfield.addKeyListener(this);
+        this.platesOrderButton.addKeyListener(this);
+        this.ordersReadyCheckbox.addKeyListener(this);
+        this.ordersSendButton.addKeyListener(this);
+        this.ordersSentCheckbox.addKeyListener(this);
+        this.platesCombobox.addKeyListener(this);
+        this.platesCommentTextfield.addKeyListener(this);
+        this.platesQuantityTextfield.addKeyListener(this);
+        this.readAvailablePlatesButton.addKeyListener(this);
+        this.tableCombobox.addKeyListener(this);
         this.addWindowListener(new RoomManagerWindowAdapter(this));
+        this.systemInfosMenuItem.addActionListener(this);
+        this.dateTimeSettingsMenuItem.addActionListener(this);
+        this.beginnerGuideMenuItem.addActionListener(this);
+        this.aboutMenuItem.addActionListener(this);
+
+        // Init network
+        this.startNetworkClientConnection();
+        this.startNetworkServerTrapConnection();
+    }
+
+    @Override
+    public void actionPerformed(ActionEvent e) {
+        if (e.getSource() == this.systemInfosMenuItem) {
+            SystemInfosGui systemInfoGui = new SystemInfosGui(this, true);
+            systemInfoGui.setLocationRelativeTo(this);
+            systemInfoGui.setVisible(true);
+            systemInfoGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.dateTimeSettingsMenuItem) {
+            DateSettingsGui dateSettingsGui = new DateSettingsGui(
+                this, true, this.applicationConfig);
+            dateSettingsGui.setLocationRelativeTo(this);
+            dateSettingsGui.setVisible(true);
+            System.out.println("DEBUG selected DateFormat: " + dateSettingsGui.getSelectedDateFormat());
+            System.out.println("DEBUG selected Locale: " + dateSettingsGui.getSelectedLocale());
+            dateSettingsGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.aboutMenuItem) {
+            AboutGui aboutGui = new AboutGui(this, true, this.applicationConfig);
+            aboutGui.setLocationRelativeTo(this);
+            aboutGui.setVisible(true);
+            aboutGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.beginnerGuideMenuItem) {
+            BeginnerGuideGui beginnerGuide = new BeginnerGuideGui(this, true);
+            beginnerGuide.setLocationRelativeTo(this);
+            beginnerGuide.setVisible(true);
+            beginnerGuide.dispose();
+            return;
+        }
     }
 
     class RoomManagerWindowAdapter extends WindowAdapter {
@@ -192,25 +292,6 @@ public class RestaurantRoomManagerGui
             this.applicationConfig,
             "")
                 .getDefaultPlates();
-    }
-    
-    private void initUXEvents() {
-        this.billCheckoutButton.addKeyListener(this);
-        this.dessertsCombobox.addKeyListener(this);
-        this.dessertsCommentsTextfield.addKeyListener(this);
-        this.dessertsOrderButton.addKeyListener(this);
-        this.dessertsQuantityTextfield.addKeyListener(this);
-        this.drinksAddButton.addKeyListener(this);
-        this.drinksAmountTextfield.addKeyListener(this);
-        this.platesOrderButton.addKeyListener(this);
-        this.ordersReadyCheckbox.addKeyListener(this);
-        this.ordersSendButton.addKeyListener(this);
-        this.ordersSentCheckbox.addKeyListener(this);
-        this.platesCombobox.addKeyListener(this);
-        this.platesCommentTextfield.addKeyListener(this);
-        this.platesQuantityTextfield.addKeyListener(this);
-        this.readAvailablePlatesButton.addKeyListener(this);
-        this.tableCombobox.addKeyListener(this);
     }
     
     private void initApplicationGui() {
@@ -304,7 +385,7 @@ public class RestaurantRoomManagerGui
             StringBuilder hexString = new StringBuilder();
             for (int i = 0; i < byteData.length; i++) {
                 String hex = Integer.toHexString(0xff & byteData[i]);
-                if (hex.length() == 1){
+                if (hex.length() == 1) {
                     hexString.append('0');
                 }
                 hexString.append(hex);
@@ -313,13 +394,18 @@ public class RestaurantRoomManagerGui
         } catch (NoSuchAlgorithmException ex) {}
         return null;
     }
-    
-    private void startNetworkConnection() {
+
+    private void startNetworkClientConnection() {
         this.networkSender = new NetworkBasicClient(
             this.applicationConfig.getServerAddress(),
             this.applicationConfig.getServerPort());
     }
-        
+
+    private void startNetworkServerTrapConnection() {
+        this.networkReceiver = new NetworkBasicServer(this.applicationConfig.getTrapServerPort(), null);
+        System.out.println("DEBUG Server listening on " + this.applicationConfig.getTrapServerPort());
+    }
+
     private void quitApplicationWithConfirm() {
         Object[] options = {
             "No, continue my work",
@@ -396,6 +482,20 @@ public class RestaurantRoomManagerGui
         ordersReadyCheckbox = new javax.swing.JCheckBox();
         readAvailablePlatesButton = new javax.swing.JButton();
         billAmountLabel = new javax.swing.JLabel();
+        menuBar = new javax.swing.JMenuBar();
+        waitersMenu = new javax.swing.JMenu();
+        modifyPasswordMenuItem = new javax.swing.JMenuItem();
+        addNewWaiterMenuItem = new javax.swing.JMenuItem();
+        tablesMenu = new javax.swing.JMenu();
+        listTablesMenuItem = new javax.swing.JMenuItem();
+        totalNumberClientsMenuItem = new javax.swing.JMenuItem();
+        totalBillsMenuItem = new javax.swing.JMenuItem();
+        platesMenu = new javax.swing.JMenu();
+        listPlatesMenuItem = new javax.swing.JMenuItem();
+        listDessertsMenuItem = new javax.swing.JMenuItem();
+        platesMenuSeparator = new javax.swing.JPopupMenu.Separator();
+        createPlateMenuItem = new javax.swing.JMenuItem();
+        removePlateMenuItem = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
 
@@ -496,8 +596,55 @@ public class RestaurantRoomManagerGui
         ordersReadyCheckbox.setText("Orders ready");
 
         readAvailablePlatesButton.setText("Read available plates");
+        readAvailablePlatesButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                readAvailablePlatesButtonActionPerformed(evt);
+            }
+        });
 
         billAmountLabel.setText("0 EUR");
+
+        waitersMenu.setText("Waiters");
+
+        modifyPasswordMenuItem.setText("jMenuItem1");
+        waitersMenu.add(modifyPasswordMenuItem);
+
+        addNewWaiterMenuItem.setText("jMenuItem1");
+        waitersMenu.add(addNewWaiterMenuItem);
+
+        menuBar.add(waitersMenu);
+
+        tablesMenu.setText("Tables");
+
+        listTablesMenuItem.setText("jMenuItem1");
+        tablesMenu.add(listTablesMenuItem);
+
+        totalNumberClientsMenuItem.setText("jMenuItem1");
+        tablesMenu.add(totalNumberClientsMenuItem);
+
+        totalBillsMenuItem.setText("jMenuItem1");
+        tablesMenu.add(totalBillsMenuItem);
+
+        menuBar.add(tablesMenu);
+
+        platesMenu.setText("Plates");
+
+        listPlatesMenuItem.setText("List plates");
+        platesMenu.add(listPlatesMenuItem);
+
+        listDessertsMenuItem.setText("List desserts");
+        platesMenu.add(listDessertsMenuItem);
+        platesMenu.add(platesMenuSeparator);
+
+        createPlateMenuItem.setText("Add new plate");
+        platesMenu.add(createPlateMenuItem);
+
+        removePlateMenuItem.setText("Remove existing plate");
+        platesMenu.add(removePlateMenuItem);
+
+        menuBar.add(platesMenu);
+
+        setJMenuBar(menuBar);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -659,7 +806,7 @@ public class RestaurantRoomManagerGui
                     .addComponent(ordersSentCheckbox)
                     .addComponent(ordersReadyCheckbox)
                     .addComponent(readAvailablePlatesButton))
-                .addContainerGap(15, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -695,7 +842,7 @@ public class RestaurantRoomManagerGui
                     JOptionPane.ERROR_MESSAGE);
                 return;
             }
-        
+
             if (plateQuantityInput <= 0) {
                 JOptionPane.showMessageDialog(this,
                     "The plate quantity must be positive",
@@ -807,7 +954,7 @@ public class RestaurantRoomManagerGui
         if (!comment.isEmpty()) {
             order.setComment(comment);
         }
-        
+
         if (!orderFound) {
             this.ordersToSend.add(order);            
         } else {
@@ -848,11 +995,13 @@ public class RestaurantRoomManagerGui
         }
         this.billAmountLabel.setText(
             String.valueOf(this.billAmount + " " + this.currencySymbol));
+
+        this.ordersSentCheckbox.setSelected(false);
     }
-    
+
     private void orderDessert() {
-        Plate dessert;
-        int dessertQuantity = 0;
+        Dessert dessert;
+        int dessertQuantity;
         String orderComment;
         try {
             dessert = this.defaultDesserts.get(
@@ -963,12 +1112,21 @@ public class RestaurantRoomManagerGui
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
 
-        NetworkProtocolEncoder encoder = new NetworkProtocolEncoder(
+        if (this.ordersToSend.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                this,
+                "There is no order to send.",
+                "No orders to send",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        NetworkProtocolOrderSender encoder = new NetworkProtocolOrderSender(
             this.applicationConfig, this.currentTable, this.ordersToSend);
         String request = encoder.encodeRequest();
 
         boolean retryConnection = true;
-        String networkAnswer = "";
+        String networkAnswer = null;
 
         while (retryConnection) {
             retryConnection = false;
@@ -1003,7 +1161,7 @@ public class RestaurantRoomManagerGui
                     return;
                 }
                 retryConnection = true;
-                this.startNetworkConnection();
+                this.startNetworkClientConnection();
                 continue;
             }
 
@@ -1028,19 +1186,18 @@ public class RestaurantRoomManagerGui
                         JOptionPane.ERROR_MESSAGE);
                     return;
                 }
-                OrderDeclinedReasonGui orderDeclinedGui = new OrderDeclinedReasonGui(
-                    this, answerFields.get(1));
+                OrderDeclinedReasonGui orderDeclinedGui;
+                if (answerFields.size() > 1) {
+                    orderDeclinedGui = new OrderDeclinedReasonGui(
+                        this, answerFields.get(1));
+                } else {
+                    orderDeclinedGui = new OrderDeclinedReasonGui(
+                        this, null);
+                }
+                orderDeclinedGui.setLocationRelativeTo(this);
                 orderDeclinedGui.setVisible(true);
                 return;
             }
-
-            JOptionPane.showMessageDialog(
-                this,
-                "The order has been received properly by the kitchen.",
-                "Order received",
-                JOptionPane.INFORMATION_MESSAGE);
-
-            this.ordersSentCheckbox.setEnabled(true);
         }
 
         // Update UI
@@ -1081,6 +1238,13 @@ public class RestaurantRoomManagerGui
                     this.currencySymbol + ")");
             }
         }
+
+        JOptionPane.showMessageDialog(
+            this,
+            "The order has been received properly by the kitchen.",
+            "Order received",
+            JOptionPane.INFORMATION_MESSAGE);
+        this.ordersSentCheckbox.setSelected(true);
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
@@ -1326,6 +1490,57 @@ public class RestaurantRoomManagerGui
         billDialog.dispose();
     }//GEN-LAST:event_billCheckoutButtonActionPerformed
 
+    private void readAvailablePlatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_readAvailablePlatesButtonActionPerformed
+
+        String requestReceived = this.networkReceiver.getMessage();
+        NetworkProtocolServeNotifyReceiver parser =
+            new NetworkProtocolServeNotifyReceiver(
+                this.applicationConfig,
+                this.defaultMainCourses,
+                this.defaultDesserts,
+                requestReceived);
+
+        ArrayList<PlateOrder> plateOrders;
+        try {
+            plateOrders = parser.getOrders();
+        } catch (NetworkProtocolUnexpectedFieldException |
+                 NetworkProtocolMalformedFieldException ex) {
+            JOptionPane.showMessageDialog(this,
+                "An error occurred when trying to get the plates ready",
+                "New plates ready",
+                JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        StringBuilder message = new StringBuilder();
+        String messageTitle;
+        if (plateOrders.size() > 1) {
+            messageTitle = "New plates ready";
+            message.append("The following plates are ready to be served: ");
+            int number = 1;
+            for (PlateOrder order: plateOrders) {
+                message.append(" (")
+                       .append(number)
+                       .append(") ")
+                       .append(order.getQuantity())
+                       .append("x ")
+                       .append(order.getPlate().getLabel());
+                number++;
+            }
+        } else {
+            messageTitle = "New plate ready";
+            message.append("The following plate is ready to be served:");
+            message.append(plateOrders.get(0).getQuantity())
+            .append("x ")
+            .append(plateOrders.get(0).getPlate().getLabel());
+        }
+
+        JOptionPane.showMessageDialog(this,
+            message.toString(),
+            messageTitle,
+            JOptionPane.INFORMATION_MESSAGE);
+    }//GEN-LAST:event_readAvailablePlatesButtonActionPerformed
+
     private void orderDrinks() {
         try {
             double drinksAmount = Double.parseDouble(this.drinksAmountTextfield.getText());
@@ -1370,10 +1585,12 @@ public class RestaurantRoomManagerGui
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JMenuItem addNewWaiterMenuItem;
     private javax.swing.JLabel billAmountLabel;
     private javax.swing.JButton billCheckoutButton;
     private javax.swing.JLabel billLabel;
     private javax.swing.JLabel billPaidStateLabel;
+    private javax.swing.JMenuItem createPlateMenuItem;
     private javax.swing.JComboBox<String> dessertsCombobox;
     private javax.swing.JLabel dessertsCommentsLabel;
     private javax.swing.JTextField dessertsCommentsTextfield;
@@ -1390,8 +1607,13 @@ public class RestaurantRoomManagerGui
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JScrollPane jScrollPane2;
     private javax.swing.JSeparator jSeparator1;
+    private javax.swing.JMenuItem listDessertsMenuItem;
+    private javax.swing.JMenuItem listPlatesMenuItem;
+    private javax.swing.JMenuItem listTablesMenuItem;
     private javax.swing.JLabel maxCoversLabel;
     private javax.swing.JLabel maxCoversValueLabel;
+    private javax.swing.JMenuBar menuBar;
+    private javax.swing.JMenuItem modifyPasswordMenuItem;
     private javax.swing.JCheckBox ordersReadyCheckbox;
     private javax.swing.JButton ordersSendButton;
     private javax.swing.JCheckBox ordersSentCheckbox;
@@ -1401,15 +1623,22 @@ public class RestaurantRoomManagerGui
     private javax.swing.JTextField platesCommentTextfield;
     private javax.swing.JLabel platesCommentsLabel;
     private javax.swing.JLabel platesLabel;
+    private javax.swing.JMenu platesMenu;
+    private javax.swing.JPopupMenu.Separator platesMenuSeparator;
     private javax.swing.JButton platesOrderButton;
     private javax.swing.JLabel platesOrdersLabel;
     private javax.swing.JLabel platesQuantityLabel;
     private javax.swing.JTextField platesQuantityTextfield;
     private javax.swing.JButton readAvailablePlatesButton;
+    private javax.swing.JMenuItem removePlateMenuItem;
     private javax.swing.JLabel servedPlatesLabel;
     private javax.swing.JList<String> servedPlatesList;
     private javax.swing.JComboBox<String> tableCombobox;
     private javax.swing.JLabel tableLabel;
+    private javax.swing.JMenu tablesMenu;
+    private javax.swing.JMenuItem totalBillsMenuItem;
+    private javax.swing.JMenuItem totalNumberClientsMenuItem;
+    private javax.swing.JMenu waitersMenu;
     // End of variables declaration//GEN-END:variables
 
     @Override
@@ -1434,7 +1663,8 @@ public class RestaurantRoomManagerGui
             return;
         }
 
-        if (ke.getKeyCode() == KeyEvent.VK_DELETE) {
+        if (ke.getKeyCode() == KeyEvent.VK_DELETE &&
+            this.getFocusOwner() == this.ordersToSendList) {
             this.removeFromOrdersToSend();
         }
     }

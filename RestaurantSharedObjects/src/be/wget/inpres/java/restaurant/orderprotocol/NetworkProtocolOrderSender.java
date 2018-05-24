@@ -14,20 +14,19 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.TimeZone;
 
 /**
  *
  * @author wget
  */
-public class NetworkProtocolEncoder {
+public class NetworkProtocolOrderSender {
     
     protected RestaurantConfig applicationConfig;
     protected ArrayList<PlateOrder> ordersToSend;
     protected Table currentTable;
      
-    public NetworkProtocolEncoder(    
+    public NetworkProtocolOrderSender(
         RestaurantConfig applicationConfig,
         Table currentTable,
         ArrayList<PlateOrder> ordersToSend) {
@@ -43,6 +42,8 @@ public class NetworkProtocolEncoder {
         df.setTimeZone(TimeZone.getTimeZone("UTC"));
         String orderTime = df.format(new Date());
         for (PlateOrder order: this.ordersToSend) {
+            ordersToServer.append(NetworkProtocolRequestType.ORDER);
+            ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
             ordersToServer.append(order.getQuantity());
             ordersToServer.append(this.applicationConfig.getOrderFieldDelimiter());
             if (order.getPlate() instanceof MainCourse) {

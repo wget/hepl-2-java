@@ -9,6 +9,8 @@ package be.wget.inpres.java.restaurant.orderprotocol;
  *
  * @author wget
  */
-public class NetworkOrderProtocolUnexpectedFieldException extends Exception {
-    
+public class NetworkProtocolServeNotifyFields {
+    static final int REQUEST_TYPE = 0,
+    QUANTITY = 1,
+    PLATE_CODE = 2;
 }

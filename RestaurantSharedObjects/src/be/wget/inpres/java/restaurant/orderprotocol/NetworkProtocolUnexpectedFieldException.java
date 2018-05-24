@@ -9,6 +9,6 @@ package be.wget.inpres.java.restaurant.orderprotocol;
  *
  * @author wget
  */
-public class NetworkOrderProtocolMalformedFieldException extends Exception {
+public class NetworkProtocolUnexpectedFieldException extends Exception {
     
 }

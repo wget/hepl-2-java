@@ -30,7 +30,12 @@ public class OrderDeclinedReasonGui extends javax.swing.JDialog {
         super(parent, true);
         initComponents();
         setLocationRelativeTo(null);
-        this.orderDeclinedReasonTextarea.setText(reason);
+        if (reason != null) {
+            this.orderDeclinedReasonTextarea.setText(reason);
+        } else {
+            this.orderDeclinedReasonTextarea.setText("N/A");
+        }
+
         this.orderDeclinedReasonTextarea.setEditable(false);
     }
 
