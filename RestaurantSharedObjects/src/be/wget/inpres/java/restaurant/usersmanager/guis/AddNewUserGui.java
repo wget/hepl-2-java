@@ -48,6 +48,7 @@ public class AddNewUserGui extends JDialog implements KeyListener {
         initComponents();
         this.setTitle("Add new user");
         this.usersManager = usersManager;
+        this.newPasswordTextfield.addKeyListener(this);
     }
 
     /**

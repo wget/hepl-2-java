@@ -29,23 +29,40 @@ public class UsersManager {
     private Properties credentials;
     boolean isFileDefined = false;
     
-    public UsersManager(RestaurantConfig applicationConfig, JFrame parent) {
+    public UsersManager(RestaurantConfig applicationConfig, JFrame parent)
+        throws UsersManagerSerializationException {
         this.applicationConfig = applicationConfig;
         this.parent = parent;
-        
-        System.out.println("DEBUG: pwd: " + System.getProperty("user.dir"));
-        System.out.println("DEBUG: getUsersFilename: " + this.applicationConfig.getUsersFilename());
-        
-        this.credentials = new Properties();
-        this.usersFile = new File(this.applicationConfig.getUsersFilename());
+        try {        
+            this.credentials = new Properties();
+            this.usersFile = new File(this.applicationConfig.getUsersFilename());
+            FileInputStream fis = new FileInputStream(this.usersFile);
+            this.credentials.load(fis);
+            fis.close();
+            if (!this.credentials.propertyNames().hasMoreElements()) {
+                this.populateDefaultUsers();
+            }
+            this.isFileDefined = true;
+        } catch (IOException ex) {
+            this.populateDefaultUsers();
+        }
+    }
+    
+    private void populateDefaultUsers()
+        throws UsersManagerSerializationException {
         try {
+            this.credentials.put("wget", this.getSha512FromPassword("12345"));
+            this.credentials.put("wagner", this.getSha512FromPassword("vilvens"));
+            this.usersFile = new File(this.applicationConfig.getUsersFilename());
             FileInputStream fis = new FileInputStream(this.usersFile);
             this.credentials.load(fis);
             fis.close();
             this.isFileDefined = true;
-        } catch (IOException ex) {
-            this.credentials.put("wget", this.getSha512FromPassword("12345"));
-            this.credentials.put("wagner", this.getSha512FromPassword("vilvens"));
+            FileOutputStream fos = new FileOutputStream(this.usersFile);
+            this.credentials.store(fos, null);
+            fos.close();
+        } catch (IOException ex1) {
+            throw new UsersManagerSerializationException();
         }
     }
     

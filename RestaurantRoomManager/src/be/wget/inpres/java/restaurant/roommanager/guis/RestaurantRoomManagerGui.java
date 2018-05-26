@@ -29,11 +29,11 @@ import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderSender;
 import be.wget.inpres.java.restaurant.roommanager.OrderReadyNotifyThread;
-import be.wget.inpres.java.restaurant.roommanager.OrderReadyNotifyThreadMonitor;
 import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManager;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManagerLoginDialogCancelled;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManagerPasswordInvalidException;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManagerSerializationException;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManagerUserNotFoundException;
 import be.wget.inpres.java.restaurant.usersmanager.guis.AddNewUserGui;
 import be.wget.inpres.java.restaurant.usersmanager.guis.ModifyPasswordGui;
@@ -125,10 +125,14 @@ public class RestaurantRoomManagerGui
     
     
     private void authenticateUser() {
-        this.usersManager = new UsersManager(applicationConfig, this);
-        String username = "";
+
         try {
-             username = this.usersManager.authenticateUser();
+            this.usersManager = new UsersManager(applicationConfig, this);
+            String username = "";
+            username = this.usersManager.authenticateUser();
+            this.currentTable.setWaiterName(username);
+            this.setTitle(this.applicationConfig.getRestaurantName()
+                + ": " + this.currentTable.getWaiterName());
         } catch (UsersManagerUserNotFoundException ex) {
             JOptionPane.showMessageDialog(
                 this,
@@ -149,11 +153,14 @@ public class RestaurantRoomManagerGui
             this.exitApplication();
         } catch (UsersManagerLoginDialogCancelled ex) {
             this.exitApplication();
+        } catch (UsersManagerSerializationException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Users manager serialization impossible. Quitting...",
+                this.applicationConfig.getRestaurantName(),
+                JOptionPane.ERROR_MESSAGE);
+            this.exitApplication();            
         }
-                
-        this.currentTable.setWaiterName(username);
-        this.setTitle(this.applicationConfig.getRestaurantName()
-            + ": " + this.currentTable.getWaiterName());
     }
     
     private void initAdditionalComponents() {
