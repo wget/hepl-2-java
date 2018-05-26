@@ -314,7 +314,9 @@ public class RestaurantKitchenManagerGui
         // RIEN is provided by the underlying networking lib provided by the
         // teacher. Cannot modify it to have a more elegant English based
         // application.
-        if (request == null || request.isEmpty() || request.equals("RIEN")) {
+        if (request == null ||
+            request.isEmpty() ||
+            request.equals(this.applicationConfig.getNetworkNoValue())) {
             JOptionPane.showMessageDialog(
                 this,
                 "There is no order received.",
@@ -330,9 +332,6 @@ public class RestaurantKitchenManagerGui
             request);
         try {
             this.newTablesOrders.addAll(parser.getTables());
-                    System.out.println("DEBUG WE ARE HERE");
-        System.out.println("WEBUG SIZE newTableOrders: " + this.newTablesOrders.size());
-        System.out.println("WEBUG SIZE newTableOrders orders size: " + this.newTablesOrders.get(0).getOrders().size());
         } catch (NetworkProtocolUnexpectedFieldException |
                  NetworkProtocolMalformedFieldException ex) {
             JOptionPane.showMessageDialog(
@@ -444,10 +443,17 @@ public class RestaurantKitchenManagerGui
             (DefaultTableModel)platesBeingPreparedTable.getModel();
         ArrayList<PlateOrder> ordersToNotify = new ArrayList<>();
         boolean orderBeingPrepared = false;
+        boolean orderAlreadyServed = false;
         for (int i = 0; i < platesBeingPreparedTableModel.getRowCount(); i++) {
             orderBeingPrepared = (Boolean)platesBeingPreparedTableModel
                 .getValueAt(i, PlatesBeingPreparedTableColumns.READY_TO_SERVE);
             if (!orderBeingPrepared) {
+                continue;
+            }
+            
+            orderAlreadyServed = (Boolean)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.SERVED);
+            if (orderAlreadyServed) {
                 continue;
             }
 

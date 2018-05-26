@@ -12,13 +12,13 @@ import javax.swing.table.DefaultTableModel;
  * @author wget
  */
 @SuppressWarnings("serial")
-public class SystemInfosTableModel extends DefaultTableModel {
+public class ListTablesTableModel extends DefaultTableModel {
     Class<?>[] types = new Class<?>[] {
         String.class,
         String.class
     };
 
-    public SystemInfosTableModel() {
+    public ListTablesTableModel() {
         super(new Object [][] {
 
         },

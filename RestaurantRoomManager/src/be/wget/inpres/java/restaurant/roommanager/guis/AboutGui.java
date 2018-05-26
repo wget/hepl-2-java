@@ -18,21 +18,34 @@ package be.wget.inpres.java.restaurant.roommanager.guis;
 
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import java.awt.Frame;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.util.Calendar;
 
 /**
  *
  * @author wget
  */
-public class AboutGui extends javax.swing.JDialog {
+@SuppressWarnings("serial")
+public class AboutGui extends javax.swing.JDialog implements KeyListener {
 
     /**
      * Creates new form AboutGui
      */
-    public AboutGui(Frame parent, boolean modal, RestaurantConfig config) {
-        super(parent, modal);
+    public AboutGui(Frame parent, RestaurantConfig config) {
+        super(parent, true);
         initComponents();
         this.setTitle("About the application " + config.getRestaurantName());
+        this.aboutTextArea.setText(
+            "This application has been developed for the course named \"Network " +
+            "and Internet technology\". This course is taught by the excellent " +
+            "teachers C.Vilvens, C.Charlet and JM.Wagner to bloc 2 students." +
+            System.lineSeparator() + System.lineSeparator() +
+            "\u00A9 William Gathoye - " + Calendar.getInstance().get(Calendar.YEAR));
+        this.aboutTextArea.setWrapStyleWord(true);
         this.aboutTextArea.setLineWrap(true);
+        this.aboutTextArea.setEditable(false);
+        this.aboutTextArea.addKeyListener(this);
     }
 
     /**
@@ -52,7 +65,6 @@ public class AboutGui extends javax.swing.JDialog {
 
         aboutTextArea.setColumns(20);
         aboutTextArea.setRows(5);
-        aboutTextArea.setText("This application has been developed for the course named network and Internet technology. Bloc 2 given by the excellent teachers C.Vilvens - C.Charlet - JM.Wagner.\\n\\n(c) William Gathoye");
         jScrollPane1.setViewportView(aboutTextArea);
 
         okButton.setText("OK");
@@ -97,4 +109,18 @@ public class AboutGui extends javax.swing.JDialog {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void keyTyped(KeyEvent ke) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent ke) {
+        this.setVisible(false);
+    }
+
+    @Override
+    public void keyReleased(KeyEvent ke) {
+
+    }
 }

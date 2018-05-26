@@ -27,12 +27,16 @@ import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderSender;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifyReceiver;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
-import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
+import be.wget.inpres.java.restaurant.roommanager.OrderReadyNotifyThread;
+import be.wget.inpres.java.restaurant.roommanager.OrderReadyNotifyThreadMonitor;
 import be.wget.inpres.java.restaurant.roommanager.TooManyCoversException;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManager;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManagerLoginDialogCancelled;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManagerPasswordInvalidException;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManagerUserNotFoundException;
+import be.wget.inpres.java.restaurant.usersmanager.guis.AddNewUserGui;
+import be.wget.inpres.java.restaurant.usersmanager.guis.ModifyPasswordGui;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
@@ -43,13 +47,9 @@ import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.Box;
 import javax.swing.DefaultComboBoxModel;
@@ -76,12 +76,13 @@ public class RestaurantRoomManagerGui
     private final String currencySymbol = "EUR";
 
     // Hashtable is deprecated, let's use a Hashmap instead.
-    private HashMap<String, String> credentials;
+
     private HashMap<String, Table> tables;
     private ArrayList<MainCourse> defaultMainCourses;
     private ArrayList<Dessert> defaultDesserts;
     private ArrayList<Table> savedTables;
     private ArrayList<PlateOrder> ordersToSend;
+    private ArrayList<PlateOrder> ordersReady;
     private Table currentTable;
     private int effectiveCovers;
     private int selectedTableIndex;
@@ -91,7 +92,9 @@ public class RestaurantRoomManagerGui
     private RestaurantConfig applicationConfig;
     private NetworkBasicClient networkSender;
     private NetworkBasicServer networkReceiver;
+    private OrderReadyNotifyThread orderReadyNotifyThread;
     private Icon applicationIcon;
+    private UsersManager usersManager;
 
     private JMenu settingsMenu;
     private JMenu helpMenu;
@@ -110,10 +113,47 @@ public class RestaurantRoomManagerGui
         // Additional GUI customizations
         this.initAdditionalComponents();
 
-        this.populateData();
         this.initApplicationGui();
         
+        // Init network
+        this.startNetworkClientConnection();
+        this.startNetworkServerTrapConnection();
+        this.startOrderReadyNotifyThread();
+        
         this.authenticateUser();
+    }
+    
+    
+    private void authenticateUser() {
+        this.usersManager = new UsersManager(applicationConfig, this);
+        String username = "";
+        try {
+             username = this.usersManager.authenticateUser();
+        } catch (UsersManagerUserNotFoundException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Unable to find the user \""
+                    + ex.getUsername()
+                    + "\". Quitting...",
+                this.applicationConfig.getRestaurantName(),
+                JOptionPane.ERROR_MESSAGE);
+            this.exitApplication();
+        } catch (UsersManagerPasswordInvalidException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "The password for the user \""
+                    + ex.getUsername()
+                    + "\" is incorrect. Quitting...",
+                this.applicationConfig.getRestaurantName(),
+                JOptionPane.ERROR_MESSAGE);
+            this.exitApplication();
+        } catch (UsersManagerLoginDialogCancelled ex) {
+            this.exitApplication();
+        }
+                
+        this.currentTable.setWaiterName(username);
+        this.setTitle(this.applicationConfig.getRestaurantName()
+            + ": " + this.currentTable.getWaiterName());
     }
     
     private void initAdditionalComponents() {
@@ -146,6 +186,9 @@ public class RestaurantRoomManagerGui
         // Init model
         this.ordersToSendListModel = new DefaultListModel<>();
         this.servedPlatesListModel = new DefaultListModel<>();
+        this.savedTables = new ArrayList<>();
+        this.ordersToSend = new ArrayList<>();
+        this.ordersReady = new ArrayList<>();
 
         this.settingsMenu = new JMenu("Settings");
         this.systemInfosMenuItem = new JMenuItem("System infos");
@@ -160,6 +203,32 @@ public class RestaurantRoomManagerGui
         this.billAmount = new BigDecimal("0");
         this.effectiveCovers = 0;
         this.ordersToSendList.addKeyListener(this);
+
+        // FIXME: Hardcoded tables
+        this.tables = new HashMap<>();
+        this.tables.put("G1", new Table("G1", 4));
+        this.tables.put("G2", new Table("G2", 4));
+        this.tables.put("G3", new Table("G3", 4));
+        this.tables.put("C11", new Table("C11", 4));
+        this.tables.put("C12", new Table("C12", 6));
+        this.tables.put("C13", new Table("C13", 4));
+        this.tables.put("C21", new Table("C21", 6));
+        this.tables.put("C22", new Table("C22", 6));
+        this.tables.put("D1", new Table("D1", 4));
+        this.tables.put("D2", new Table("D2", 2));
+        this.tables.put("D3", new Table("D3", 2));
+        this.tables.put("D3", new Table("D4", 2));
+        this.tables.put("D5", new Table("D5", 2));
+        
+        // Populate list of plates
+        this.defaultMainCourses = new DefaultMainCoursesImporter(
+            this.applicationConfig,
+            "plates.default.txt")
+                .getDefaultPlates();
+        this.defaultDesserts = new DefaultDessertsImporter(
+            this.applicationConfig,
+            "")
+                .getDefaultPlates();
 
         // Init UI
         this.setTitle(this.applicationConfig.getRestaurantName());
@@ -199,10 +268,6 @@ public class RestaurantRoomManagerGui
         this.dateTimeSettingsMenuItem.addActionListener(this);
         this.beginnerGuideMenuItem.addActionListener(this);
         this.aboutMenuItem.addActionListener(this);
-
-        // Init network
-        this.startNetworkClientConnection();
-        this.startNetworkServerTrapConnection();
     }
 
     @Override
@@ -227,7 +292,9 @@ public class RestaurantRoomManagerGui
         }
 
         if (e.getSource() == this.aboutMenuItem) {
-            AboutGui aboutGui = new AboutGui(this, true, this.applicationConfig);
+            AboutGui aboutGui = new AboutGui(
+                this,
+                this.applicationConfig);
             aboutGui.setLocationRelativeTo(this);
             aboutGui.setVisible(true);
             aboutGui.dispose();
@@ -235,7 +302,9 @@ public class RestaurantRoomManagerGui
         }
 
         if (e.getSource() == this.beginnerGuideMenuItem) {
-            BeginnerGuideGui beginnerGuide = new BeginnerGuideGui(this, true);
+            BeginnerGuideGui beginnerGuide = new BeginnerGuideGui(
+                this,
+                this.applicationConfig);
             beginnerGuide.setLocationRelativeTo(this);
             beginnerGuide.setVisible(true);
             beginnerGuide.dispose();
@@ -256,42 +325,6 @@ public class RestaurantRoomManagerGui
         public void windowClosing(WindowEvent event) {
             frame.exitApplication();
         }
-    }
-    
-    private void populateData() {
-        this.savedTables = new ArrayList<>();
-        this.ordersToSend = new ArrayList<>();
-        
-        // FIXME: Hardcoded credentials
-        this.credentials = new HashMap<>();
-        this.credentials.put("wget", this.getSha512FromPassword("12345"));
-        this.credentials.put("wagner", this.getSha512FromPassword("vilvens"));
-        
-        // FIXME: Hardcoded tables
-        this.tables = new HashMap<>();
-        this.tables.put("G1", new Table("G1", 4));
-        this.tables.put("G2", new Table("G2", 4));
-        this.tables.put("G3", new Table("G3", 4));
-        this.tables.put("C11", new Table("C11", 4));
-        this.tables.put("C12", new Table("C12", 6));
-        this.tables.put("C13", new Table("C13", 4));
-        this.tables.put("C21", new Table("C21", 6));
-        this.tables.put("C22", new Table("C22", 6));
-        this.tables.put("D1", new Table("D1", 4));
-        this.tables.put("D2", new Table("D2", 2));
-        this.tables.put("D3", new Table("D3", 2));
-        this.tables.put("D3", new Table("D4", 2));
-        this.tables.put("D5", new Table("D5", 2));
-        
-        // Populate list of plates
-        this.defaultMainCourses = new DefaultMainCoursesImporter(
-            this.applicationConfig,
-            "plates.default.txt")
-                .getDefaultPlates();
-        this.defaultDesserts = new DefaultDessertsImporter(
-            this.applicationConfig,
-            "")
-                .getDefaultPlates();
     }
     
     private void initApplicationGui() {
@@ -334,65 +367,16 @@ public class RestaurantRoomManagerGui
         this.platesCombobox.setSelectedIndex(0);
         this.dessertsCombobox.setSelectedIndex(0);
     }
-    
-    private void authenticateUser() {
-        LoginGui login = new LoginGui(this, true);
-        while (true) {
-            login.setVisible(true);
-            if (login.isDialogCancelled()) {
-                System.exit(1);
-            }
 
-            String hashedPassword = this.credentials.get(login.getUsername());
-            if (hashedPassword == null) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "Unable to find the user \""
-                        + login.getUsername()
-                        + "\". Quitting...",
-                    this.applicationConfig.getRestaurantName(),
-                    JOptionPane.ERROR_MESSAGE);
-                this.exitApplication();
-            }
-
-            if (!hashedPassword.equals(
-                this.getSha512FromPassword(login.getPassword()))) {
-                JOptionPane.showMessageDialog(
-                    this,
-                    "The password for the user \""
-                        + login.getUsername()
-                        + "\" is incorrect. Quitting...",
-                    this.applicationConfig.getRestaurantName(),
-                    JOptionPane.ERROR_MESSAGE);
-                this.exitApplication();
-            }
-            break;
-        }
-        this.currentTable.setWaiterName(login.getUsername());
-        login.dispose();
-        this.setTitle(this.applicationConfig.getRestaurantName()
-            + ": " + this.currentTable.getWaiterName());
-    }
-
-    private String getSha512FromPassword(String password) {
-
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-512");
-            md.update(password.getBytes());
-            
-            byte byteData[] = md.digest();
-            
-            StringBuilder hexString = new StringBuilder();
-            for (int i = 0; i < byteData.length; i++) {
-                String hex = Integer.toHexString(0xff & byteData[i]);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException ex) {}
-        return null;
+    private void startOrderReadyNotifyThread() {
+        this.orderReadyNotifyThread = new OrderReadyNotifyThread(
+            this.applicationConfig,
+            this.defaultMainCourses,
+            this.defaultDesserts,
+            this.networkReceiver,
+            this.ordersReady,
+            this.ordersReadyCheckbox);
+        this.orderReadyNotifyThread.start();
     }
 
     private void startNetworkClientConnection() {
@@ -606,23 +590,33 @@ public class RestaurantRoomManagerGui
 
         waitersMenu.setText("Waiters");
 
-        modifyPasswordMenuItem.setText("jMenuItem1");
+        modifyPasswordMenuItem.setText("Modify waiter password");
+        modifyPasswordMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                modifyPasswordMenuItemActionPerformed(evt);
+            }
+        });
         waitersMenu.add(modifyPasswordMenuItem);
 
-        addNewWaiterMenuItem.setText("jMenuItem1");
+        addNewWaiterMenuItem.setText("Add new waiter");
+        addNewWaiterMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                addNewWaiterMenuItemActionPerformed(evt);
+            }
+        });
         waitersMenu.add(addNewWaiterMenuItem);
 
         menuBar.add(waitersMenu);
 
         tablesMenu.setText("Tables");
 
-        listTablesMenuItem.setText("jMenuItem1");
+        listTablesMenuItem.setText("List tables");
         tablesMenu.add(listTablesMenuItem);
 
-        totalNumberClientsMenuItem.setText("jMenuItem1");
+        totalNumberClientsMenuItem.setText("Total number clients");
         tablesMenu.add(totalNumberClientsMenuItem);
 
-        totalBillsMenuItem.setText("jMenuItem1");
+        totalBillsMenuItem.setText("Total bills");
         tablesMenu.add(totalBillsMenuItem);
 
         menuBar.add(tablesMenu);
@@ -1254,7 +1248,7 @@ public class RestaurantRoomManagerGui
         }
 
         // If this is the same table (because the user has cancelled the
-        // table switch, there is no need to repopulate in-memory objects.
+        // table switch), there is no need to repopulate in-memory objects.
         if (this.tableCombobox.getSelectedIndex() == this.selectedTableIndex) {
             return;
         }
@@ -1266,6 +1260,8 @@ public class RestaurantRoomManagerGui
             new WaiterChangeQuestionGui(this, true);
         waiterChangeGui.setWaiterName(this.currentTable.getWaiterName());
         waiterChangeGui.setVisible(true);
+        boolean isWaiterChanging = waiterChangeGui.isWaiterChanging();
+        waiterChangeGui.dispose();
 
         // Used to backup the new waiter name further in the code, otherwise
         // we will lose access to it after the table has switched.
@@ -1273,46 +1269,37 @@ public class RestaurantRoomManagerGui
         // the current waiter on table for which no plate has been sent.
         String newWaiterName = this.currentTable.getWaiterName();
 
-        if (waiterChangeGui.isWaiterChanging()) {
-
-            LoginGui login = new LoginGui(this, true);
-            while (true) {
-                login.setVisible(true);
-                if (login.isDialogCancelled()) {
-                    break;
-                }
-
-                String hashedPassword = this.credentials.get(login.getUsername());
-                if (hashedPassword == null) {
-                    JOptionPane.showMessageDialog(getParent(),
-                        "Unable to find the user \""
-                        + login.getUsername()
-                        + "\". Retry.",
-                        this.applicationConfig.getRestaurantName(),
-                        JOptionPane.ERROR_MESSAGE);
-                    continue;
-                }
-
-                if (!hashedPassword.equals(this.getSha512FromPassword(login.getPassword()))) {
-                    JOptionPane.showMessageDialog(getParent(),
-                        "The password for the user \""
-                        + login.getUsername()
-                        + " \"is incorrect. Retry.",
-                        this.applicationConfig.getRestaurantName(),
-                        JOptionPane.ERROR_MESSAGE);
-                    continue;
-                }
-                // Change the waiter
-                newWaiterName = login.getUsername();
-                this.currentTable.setWaiterName(login.getUsername());
+        if (isWaiterChanging) {
+            try {
+                newWaiterName = this.usersManager.authenticateUser();
+                this.currentTable.setWaiterName(newWaiterName);
                 this.setTitle(this.applicationConfig.getRestaurantName()
-                    + ": " + this.currentTable.getWaiterName());
-
-                login.dispose();
-                break;
+                    + ": " + newWaiterName);
+            } catch (UsersManagerUserNotFoundException ex) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Unable to find the user \""
+                        + ex.getUsername()
+                        + "\". Cancelling table change...",
+                    this.applicationConfig.getRestaurantName(),
+                    JOptionPane.ERROR_MESSAGE);
+                this.tableCombobox.setSelectedIndex(this.selectedTableIndex);
+                return;
+            } catch (UsersManagerPasswordInvalidException ex) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "The password for the user \""
+                        + ex.getUsername()
+                        + "\". Cancelling table change...",
+                    this.applicationConfig.getRestaurantName(),
+                    JOptionPane.ERROR_MESSAGE);
+                this.tableCombobox.setSelectedIndex(this.selectedTableIndex);
+                return;
+            } catch (UsersManagerLoginDialogCancelled ex) {
+                this.tableCombobox.setSelectedIndex(this.selectedTableIndex);
+                return;
             }
         }
-        waiterChangeGui.dispose();
 
         // Recover the previous state of the table if any
         String newTableNumber = this.tableCombobox.getSelectedItem().toString();
@@ -1492,33 +1479,24 @@ public class RestaurantRoomManagerGui
 
     private void readAvailablePlatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_readAvailablePlatesButtonActionPerformed
 
-        String requestReceived = this.networkReceiver.getMessage();
-        NetworkProtocolServeNotifyReceiver parser =
-            new NetworkProtocolServeNotifyReceiver(
-                this.applicationConfig,
-                this.defaultMainCourses,
-                this.defaultDesserts,
-                requestReceived);
-
-        ArrayList<PlateOrder> plateOrders;
-        try {
-            plateOrders = parser.getOrders();
-        } catch (NetworkProtocolUnexpectedFieldException |
-                 NetworkProtocolMalformedFieldException ex) {
+        if (this.ordersReady.isEmpty()) {
             JOptionPane.showMessageDialog(this,
-                "An error occurred when trying to get the plates ready",
-                "New plates ready",
+                "There is no new plate to read.",
+                "No the plates ready",
                 JOptionPane.ERROR_MESSAGE);
             return;
-        }
+        } 
 
+        ArrayList<PlateOrder> orderReadyFetched = new ArrayList<>(
+            this.orderReadyNotifyThread.getOrdersReady());
+        this.orderReadyNotifyThread.clearOrdersReady();
         StringBuilder message = new StringBuilder();
         String messageTitle;
-        if (plateOrders.size() > 1) {
+        if (orderReadyFetched.size() > 1) {
             messageTitle = "New plates ready";
             message.append("The following plates are ready to be served: ");
             int number = 1;
-            for (PlateOrder order: plateOrders) {
+            for (PlateOrder order: orderReadyFetched) {
                 message.append(" (")
                        .append(number)
                        .append(") ")
@@ -1529,17 +1507,42 @@ public class RestaurantRoomManagerGui
             }
         } else {
             messageTitle = "New plate ready";
-            message.append("The following plate is ready to be served:");
-            message.append(plateOrders.get(0).getQuantity())
+            message.append("The following plate is ready to be served:")
+            .append(orderReadyFetched.get(0).getQuantity())
             .append("x ")
-            .append(plateOrders.get(0).getPlate().getLabel());
+            .append(orderReadyFetched.get(0).getPlate().getLabel());
         }
 
         JOptionPane.showMessageDialog(this,
             message.toString(),
             messageTitle,
             JOptionPane.INFORMATION_MESSAGE);
+
+        this.ordersReadyCheckbox.setSelected(false);
     }//GEN-LAST:event_readAvailablePlatesButtonActionPerformed
+
+    private void modifyPasswordMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_modifyPasswordMenuItemActionPerformed
+        ModifyPasswordGui modifyPasswordGui = new ModifyPasswordGui(
+            this,
+            true,
+            this.applicationConfig,
+            this.usersManager,
+            this.currentTable.getWaiterName());
+        modifyPasswordGui.setLocationRelativeTo(this);
+        modifyPasswordGui.setVisible(true);
+        modifyPasswordGui.dispose();
+    }//GEN-LAST:event_modifyPasswordMenuItemActionPerformed
+
+    private void addNewWaiterMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_addNewWaiterMenuItemActionPerformed
+        AddNewUserGui addNewUserGui = new AddNewUserGui(
+            this,
+            true,
+            this.applicationConfig,
+            this.usersManager);
+        addNewUserGui.setLocationRelativeTo(this);
+        addNewUserGui.setVisible(true);
+        addNewUserGui.dispose();
+    }//GEN-LAST:event_addNewWaiterMenuItemActionPerformed
 
     private void orderDrinks() {
         try {

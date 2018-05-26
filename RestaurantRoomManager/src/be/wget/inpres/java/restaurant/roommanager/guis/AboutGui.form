@@ -60,7 +60,6 @@
           <Properties>
             <Property name="columns" type="int" value="20"/>
             <Property name="rows" type="int" value="5"/>
-            <Property name="text" type="java.lang.String" value="This application has been developed for the course named network and Internet technology. Bloc 2 given by the excellent teachers C.Vilvens - C.Charlet - JM.Wagner.\u005cn\u005cn(c) William Gathoye" containsInvalidXMLChars="true"/>
           </Properties>
         </Component>
       </SubComponents>

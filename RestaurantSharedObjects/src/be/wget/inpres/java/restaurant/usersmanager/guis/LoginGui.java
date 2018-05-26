@@ -14,9 +14,9 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package be.wget.inpres.java.restaurant.roommanager.guis;
+package be.wget.inpres.java.restaurant.usersmanager.guis;
 
-import be.wget.inpres.java.restaurant.roommanager.DateTimeThread;
+import be.wget.inpres.java.restaurant.usersmanager.DateTimeThread;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import javax.swing.JOptionPane;

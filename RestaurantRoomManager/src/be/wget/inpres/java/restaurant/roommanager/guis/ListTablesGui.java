@@ -16,47 +16,36 @@
  */
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
-import be.wget.inpres.java.restaurant.config.RestaurantConfig;
-import java.awt.Frame;
-import java.awt.event.KeyEvent;
-import java.awt.event.KeyListener;
+import java.util.ArrayList;
+import java.util.Map.Entry;
+import javax.swing.table.DefaultTableModel;
 
 /**
  *
  * @author wget
  */
 @SuppressWarnings("serial")
-public class BeginnerGuideGui extends javax.swing.JDialog implements KeyListener {
+public class ListTablesGui extends javax.swing.JDialog {
 
     /**
      * Creates new form AboutGui
      */
-    public BeginnerGuideGui(Frame parent, RestaurantConfig config) {
-        super(parent, true);
+    public ListTablesGui(java.awt.Frame parent, boolean modal) {
+        super(parent, modal);
         initComponents();
-        this.setTitle("Beginner guide");
-        this.guideTextArea.setText("This application doesn't need an user " +
-            "manual as the user interface is simple enough to figure out " +
-            "what actions to perform." +
-            System.lineSeparator() + System.lineSeparator() +
-            "If you want to add your own users, the currently configured users " +
-            "file path is:" + System.lineSeparator() +
-            config.getUsersFilename() +
-            System.lineSeparator() + System.lineSeparator() +
-            "If you want to customize the application settings, the currently " +
-            "configured settings file path is:" + System.lineSeparator() +
-            config.getSettingsFilename() +
-            System.lineSeparator() + System.lineSeparator() +
-            "If you redefine the file paths, you need to use an absolute file " +
-            "path, otherwise the path leading to the file might not be found."
-        );
-          
-        this.guideTextArea.setWrapStyleWord(true);
-        this.guideTextArea.setLineWrap(true);
-        this.guideTextArea.setEditable(false);
-        this.guideTextArea.addKeyListener(this);
-        // Force the scroll bar to be at the top
-        this.guideTextArea.setCaretPosition(0);
+        this.setTitle("System infos");
+        this.tablesInfoTable.setModel(new SystemInfosTableModel());
+        DefaultTableModel dtm = (DefaultTableModel)this.tablesInfoTable.getModel();
+        ArrayList<String> propertyValue = new ArrayList<>();
+        for (String entry: System.getProperties().stringPropertyNames()) {
+            if (entry.isEmpty() || entry.trim().length() == 0) {
+                continue;
+            }
+            propertyValue.add(entry);
+            propertyValue.add(System.getProperty(entry));
+            dtm.addRow(propertyValue.toArray());
+            propertyValue.clear();
+        }
     }
 
     /**
@@ -68,15 +57,11 @@ public class BeginnerGuideGui extends javax.swing.JDialog implements KeyListener
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        guideTextAreaScrollPanel = new javax.swing.JScrollPane();
-        guideTextArea = new javax.swing.JTextArea();
         okButton = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        tablesInfoTable = new javax.swing.JTable();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-
-        guideTextArea.setColumns(20);
-        guideTextArea.setRows(5);
-        guideTextAreaScrollPanel.setViewportView(guideTextArea);
 
         okButton.setText("OK");
         okButton.addActionListener(new java.awt.event.ActionListener() {
@@ -85,27 +70,29 @@ public class BeginnerGuideGui extends javax.swing.JDialog implements KeyListener
             }
         });
 
+        tablesInfoTable.setModel(new ListTablesTableModel());
+        jScrollPane1.setViewportView(tablesInfoTable);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(guideTextAreaScrollPanel, javax.swing.GroupLayout.DEFAULT_SIZE, 388, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addContainerGap(391, Short.MAX_VALUE)
+                        .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addComponent(jScrollPane1))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(guideTextAreaScrollPanel, javax.swing.GroupLayout.PREFERRED_SIZE, 239, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 233, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
                 .addComponent(okButton)
-                .addContainerGap(12, Short.MAX_VALUE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         pack();
@@ -116,21 +103,8 @@ public class BeginnerGuideGui extends javax.swing.JDialog implements KeyListener
     }//GEN-LAST:event_okButtonActionPerformed
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JTextArea guideTextArea;
-    private javax.swing.JScrollPane guideTextAreaScrollPanel;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JButton okButton;
+    private javax.swing.JTable tablesInfoTable;
     // End of variables declaration//GEN-END:variables
-
-    @Override
-    public void keyTyped(KeyEvent ke) {
-    }
-
-    @Override
-    public void keyPressed(KeyEvent ke) {
-        this.setVisible(false);
-    }
-
-    @Override
-    public void keyReleased(KeyEvent ke) {
-    }
 }

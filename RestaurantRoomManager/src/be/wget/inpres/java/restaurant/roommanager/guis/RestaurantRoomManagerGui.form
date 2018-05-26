@@ -11,13 +11,19 @@
           <SubComponents>
             <MenuItem class="javax.swing.JMenuItem" name="modifyPasswordMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="jMenuItem1"/>
+                <Property name="text" type="java.lang.String" value="Modify waiter password"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="modifyPasswordMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="addNewWaiterMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="jMenuItem1"/>
+                <Property name="text" type="java.lang.String" value="Add new waiter"/>
               </Properties>
+              <Events>
+                <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="addNewWaiterMenuItemActionPerformed"/>
+              </Events>
             </MenuItem>
           </SubComponents>
         </Menu>
@@ -28,17 +34,17 @@
           <SubComponents>
             <MenuItem class="javax.swing.JMenuItem" name="listTablesMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="jMenuItem1"/>
+                <Property name="text" type="java.lang.String" value="List tables"/>
               </Properties>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="totalNumberClientsMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="jMenuItem1"/>
+                <Property name="text" type="java.lang.String" value="Total number clients"/>
               </Properties>
             </MenuItem>
             <MenuItem class="javax.swing.JMenuItem" name="totalBillsMenuItem">
               <Properties>
-                <Property name="text" type="java.lang.String" value="jMenuItem1"/>
+                <Property name="text" type="java.lang.String" value="Total bills"/>
               </Properties>
             </MenuItem>
           </SubComponents>

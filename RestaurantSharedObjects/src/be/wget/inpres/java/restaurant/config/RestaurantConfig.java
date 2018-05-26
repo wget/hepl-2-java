@@ -5,6 +5,7 @@
  */
 package be.wget.inpres.java.restaurant.config;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,7 +16,8 @@ import java.util.Properties;
  * @author wget
  */
 public class RestaurantConfig {
-    final private String settingsFilename = "settings.conf";
+    final private String settingsFilename = System.getProperty("user.dir") + File.separator + "settings.conf";
+    final private String usersFilename = System.getProperty("user.dir") + File.separator + "users.conf";
     final private String defaultApplicationName = "Le gourmet audacieux";
     final private String defaultServerAddress = "localhost";
     final private int defaultServerPort = 55161;
@@ -25,6 +27,7 @@ public class RestaurantConfig {
     final private String orderFieldDelimiter = "&";
     final private String kitchenOrderAcceptedPayload = "ORDER_ACCEPTED";
     final private String kitchenOrderDeclinedPayload = "ORDER_REFUSED";
+    final private String networkNoValue = "RIEN";
 
     private Properties restaurantConfig;
     private boolean configFileDefined = false;
@@ -129,5 +132,21 @@ public class RestaurantConfig {
             return this.kitchenOrderDeclinedPayload;
         }
         return payload;
+    }
+    
+    public String getNetworkNoValue() {
+        String networkNoValue = this.restaurantConfig.getProperty("NetworkNoValue");
+        if (networkNoValue == null || networkNoValue.isEmpty()) {
+            return this.networkNoValue;
+        }
+        return networkNoValue;        
+    }
+    
+    public String getUsersFilename() {
+        String usersFilename = this.restaurantConfig.getProperty("UsersFilename");
+        if (usersFilename == null || usersFilename.isEmpty()) {
+            return this.usersFilename;
+        }
+        return usersFilename;        
     }
 }

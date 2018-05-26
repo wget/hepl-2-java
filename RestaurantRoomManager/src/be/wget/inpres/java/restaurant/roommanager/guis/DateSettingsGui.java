@@ -33,6 +33,7 @@ import javax.swing.JDialog;
  *
  * @author wget
  */
+@SuppressWarnings("serial")
 public class DateSettingsGui extends JDialog implements ItemListener {
 
     private ArrayList<ArrayList<Object>> dateFormatValues;
@@ -97,18 +98,19 @@ public class DateSettingsGui extends JDialog implements ItemListener {
                     locale2.getDisplayName());
             }
         });
-        
+
         this.dateFormatCombobox.addItemListener(this);
         this.dateLanguageCombobox.addItemListener(this);
         
-        DefaultComboBoxModel dateFormatComboboxModel =
-            (DefaultComboBoxModel)this.dateFormatCombobox.getModel();
+        DefaultComboBoxModel<String> dateFormatComboboxModel =
+            (DefaultComboBoxModel<String>)this.dateFormatCombobox.getModel();
         for (int i = 0; i < this.dateFormatValues.size(); i++) {
-            dateFormatComboboxModel.addElement(this.dateFormatValues.get(i).get(1));
+            dateFormatComboboxModel.addElement(
+                this.dateFormatValues.get(i).get(1).toString());
         }
         
-        DefaultComboBoxModel dateLanguageComboboxModel =
-            (DefaultComboBoxModel)this.dateLanguageCombobox.getModel();
+        DefaultComboBoxModel<String> dateLanguageComboboxModel =
+            (DefaultComboBoxModel<String>)this.dateLanguageCombobox.getModel();
         
         for (Locale locale: this.localeValues) {
             //dateLanguageComboboxModel.addElement(locale);
