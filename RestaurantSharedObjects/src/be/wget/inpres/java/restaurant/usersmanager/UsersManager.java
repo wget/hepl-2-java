@@ -24,7 +24,6 @@ public class UsersManager {
     
     private RestaurantConfig applicationConfig;
     private JFrame parent;
-    private File usersFile;
     
     private Properties credentials;
     boolean isFileDefined = false;
@@ -35,33 +34,38 @@ public class UsersManager {
         this.parent = parent;
         try {        
             this.credentials = new Properties();
-            this.usersFile = new File(this.applicationConfig.getUsersFilename());
-            FileInputStream fis = new FileInputStream(this.usersFile);
+            FileInputStream fis = new FileInputStream(
+                new File(this.applicationConfig.getUsersFilename()));
             this.credentials.load(fis);
             fis.close();
             if (!this.credentials.propertyNames().hasMoreElements()) {
                 this.populateDefaultUsers();
             }
             this.isFileDefined = true;
-        } catch (IOException ex) {
+        } catch (IOException | UsersManagerSerializationException ex) {
             this.populateDefaultUsers();
         }
     }
     
     private void populateDefaultUsers()
         throws UsersManagerSerializationException {
+
+        this.credentials.put("wget", this.getSha512FromPassword("12345"));
+        this.credentials.put("wagner", this.getSha512FromPassword("vilvens"));
+        this.isFileDefined = true;
+        this.saveFile();
+    }
+    
+    private void saveFile() throws UsersManagerSerializationException {
+        if (!this.isFileDefined) {
+            return;
+        }
         try {
-            this.credentials.put("wget", this.getSha512FromPassword("12345"));
-            this.credentials.put("wagner", this.getSha512FromPassword("vilvens"));
-            this.usersFile = new File(this.applicationConfig.getUsersFilename());
-            FileInputStream fis = new FileInputStream(this.usersFile);
-            this.credentials.load(fis);
-            fis.close();
-            this.isFileDefined = true;
-            FileOutputStream fos = new FileOutputStream(this.usersFile);
+            FileOutputStream fos = new FileOutputStream(
+                new File(this.applicationConfig.getUsersFilename()));
             this.credentials.store(fos, null);
             fos.close();
-        } catch (IOException ex1) {
+        } catch (IOException ex) {
             throw new UsersManagerSerializationException();
         }
     }
@@ -97,7 +101,8 @@ public class UsersManager {
             String newPassword)
         throws IOException,
                UsersManagerUserNotFoundException,
-               UsersManagerPasswordInvalidException {
+               UsersManagerPasswordInvalidException,
+               UsersManagerSerializationException {
         
         String hashedPassword = this.credentials.getProperty(username);
         if (hashedPassword == null || hashedPassword.isEmpty()) {
@@ -117,17 +122,14 @@ public class UsersManager {
             username,
             this.getSha512FromPassword(newPassword));
         
-        if (this.isFileDefined) {
-            FileOutputStream fos = new FileOutputStream(this.usersFile);
-            this.credentials.store(fos, null);
-            fos.close();
-        }
+        this.saveFile();
     }
     
     public void addUser(String user, String newPassword)
         throws IOException,
                UsersManagerPasswordInvalidException,
-               UsersManagerUserAlreadyExistsException {
+               UsersManagerUserAlreadyExistsException,
+               UsersManagerSerializationException {
         String hashedPassword = this.credentials.getProperty(user);
         if (hashedPassword != null) {
             throw new UsersManagerUserAlreadyExistsException(user);
@@ -139,11 +141,7 @@ public class UsersManager {
         
         this.credentials.setProperty(user, this.getSha512FromPassword(newPassword));
         
-        if (this.isFileDefined) {
-            FileOutputStream fos = new FileOutputStream(this.usersFile);
-            this.credentials.store(fos, null);
-            fos.close();
-        }
+        this.saveFile();
     }
 
     private String getSha512FromPassword(String password) {
