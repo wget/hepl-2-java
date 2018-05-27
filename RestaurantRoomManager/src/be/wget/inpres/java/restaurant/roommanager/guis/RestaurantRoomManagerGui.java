@@ -451,10 +451,7 @@ public class RestaurantRoomManagerGui
     }
     
     private void updateUiFromCurrentTable() {
-        
-        // Merge orders if their state is identical
-        this.currentTable.bulkCompress();
-        
+
         // Clean GUI of values from previous table
         this.ordersToSendListModel.clear();
         this.servedPlatesListModel.clear();

@@ -176,48 +176,4 @@ public class Table implements Serializable {
     public String getWaiterName() {
         return waiterName;
     }
-    
-    public void bulkCompress() {
-        ArrayList<PlateOrder> cleanedOrders = new ArrayList<>();
-        for (int i = 0; i < this.orders.size(); i++) {
-            
-            PlateOrder order = this.orders.get(i);
-            String plateCode = null;
-            if (order.getPlate() instanceof MainCourse) {
-                plateCode = ((MainCourse)order.getPlate()).getCode();
-            } else if (order.getPlate() instanceof Dessert) {
-                plateCode = ((Dessert)order.getPlate()).getCode();
-            }
-            
-            int j = 0;
-            for (; j < cleanedOrders.size(); j++) {
-                PlateOrder orderCleaned = cleanedOrders.get(j);
-                String plateCodeCleanOrder = null;
-                if (orderCleaned.getPlate() instanceof MainCourse) {
-                    plateCodeCleanOrder = ((MainCourse)orderCleaned.getPlate()).getCode();
-                } else if (orderCleaned.getPlate() instanceof Dessert) {
-                    plateCodeCleanOrder = ((Dessert)orderCleaned.getPlate()).getCode();
-                } else {
-                    continue;
-                }
-                if (plateCodeCleanOrder.equals(plateCode)) {
-                    break;
-                }
-            }
-            // If not found
-            if (j == cleanedOrders.size()) {
-                cleanedOrders.add(order);
-                continue;
-            }
-            
-            // We have an occurrence with the same plate code, gonna check if
-            // we need to merge them depending if they have been sent or not.
-            PlateOrder orderCleaned = cleanedOrders.get(j);
-            if (orderCleaned.isSent() == order.isSent()) {
-                orderCleaned.addQuantity(order.getQuantity());
-                orderCleaned.setComment(order.getComment());
-            }
-        }
-        this.orders = cleanedOrders;
-    }
 }
