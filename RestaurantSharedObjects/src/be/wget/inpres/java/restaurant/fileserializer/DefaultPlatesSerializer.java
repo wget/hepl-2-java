@@ -12,7 +12,9 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 
@@ -20,14 +22,14 @@ import java.util.ArrayList;
  *
  * @author wget
  */
-public abstract class DefaultPlatesImporter {
+public abstract class DefaultPlatesSerializer {
     
     protected String filename;
     protected RestaurantConfig applicationConfig;
     protected ArrayList<Plate> defaultPlates;
     protected PlateCategory plateCategory;
     
-    public DefaultPlatesImporter(
+    public DefaultPlatesSerializer (
         RestaurantConfig applicationConfig,
         PlateCategory plateCategory,
         String filename) {
@@ -35,6 +37,15 @@ public abstract class DefaultPlatesImporter {
         this.filename = filename;
         this.plateCategory = plateCategory;
         this.defaultPlates = new ArrayList<>();
+    }
+
+    public DefaultPlatesSerializer (
+        RestaurantConfig applicationConfig,
+        ArrayList<Plate> defaultPlates) {
+        this.applicationConfig = applicationConfig;
+        this.filename = this.applicationConfig.getPlatesFilename();
+        this.plateCategory = PlateCategory.MAIN_COURSE;
+        this.defaultPlates = defaultPlates;
     }
     
     protected void parseFile() {
@@ -63,6 +74,33 @@ public abstract class DefaultPlatesImporter {
             }
         } catch (IOException ex) {
             this.populateDefaultPlates();
+        }
+    }
+    
+    protected void saveFile() throws IOException {
+        BufferedWriter out = null;
+        try {
+            out = new BufferedWriter(new FileWriter(filename));
+        for (Plate plate: this.defaultPlates) {
+            StringBuilder line = new StringBuilder();
+            if (plate instanceof MainCourse) {
+                line.append(((MainCourse)plate).getCode());
+            } else if (plate instanceof Dessert) {
+                line.append(((Dessert)plate).getCode());
+            }
+            line.append(applicationConfig.getOrderFieldDelimiter());
+            line.append(plate.getLabel());
+            line.append(applicationConfig.getOrderFieldDelimiter());
+            line.append(plate.getPrice());
+            line.append(System.getProperty("line.separator"));
+            out.write(line.toString());
+        }
+        } catch (IOException ex) {
+            throw new IOException();
+        } finally {
+            if (out != null) {
+                out.close();                
+            }
         }
     }
     

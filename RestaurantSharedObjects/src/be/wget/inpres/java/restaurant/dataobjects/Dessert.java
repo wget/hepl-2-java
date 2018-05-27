@@ -16,11 +16,13 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
+
 /**
  *
  * @author wget
  */
-public class Dessert extends Plate {
+public class Dessert extends Plate implements Serializable {
     
     protected String code;
 

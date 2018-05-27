@@ -25,13 +25,9 @@ import java.util.ArrayList;
  */
 public class OrderReadyNotifyThreadMonitor {
     private ArrayList<PlateOrder> ordersReady;
-    private ArrayList<PlateOrder> newOrdersReady;
 
-    public OrderReadyNotifyThreadMonitor(
-            ArrayList<PlateOrder> ordersReady,
-            ArrayList<PlateOrder> newOrdersReady) {
+    public OrderReadyNotifyThreadMonitor(ArrayList<PlateOrder> ordersReady) {
         this.ordersReady = ordersReady;
-        this.newOrdersReady = newOrdersReady;
     };
     
     public synchronized void addNewOrdersReady(
@@ -40,11 +36,11 @@ public class OrderReadyNotifyThreadMonitor {
     }
     
     public synchronized ArrayList<PlateOrder> getOrdersReady() {
-        return this.ordersReady;
-    }
-    
-    public synchronized void clearOrdersReady() {
+        ArrayList<PlateOrder> ordersReadyToReturn = new ArrayList<>();
+        for (PlateOrder order: this.ordersReady) {
+            ordersReadyToReturn.add(order);
+        }
         this.ordersReady.clear();
-        this.newOrdersReady.clear();
+        return ordersReadyToReturn;
     }
 }

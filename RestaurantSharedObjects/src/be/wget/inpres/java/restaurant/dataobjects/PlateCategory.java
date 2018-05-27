@@ -16,11 +16,13 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
+
 /**
  *
  * @author wget
  */
-public class PlateCategory {
+public class PlateCategory implements Serializable {
     protected String name;
 
     public PlateCategory(String name) {

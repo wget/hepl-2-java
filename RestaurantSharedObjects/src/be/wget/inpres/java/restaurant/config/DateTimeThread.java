@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package be.wget.inpres.java.restaurant.usersmanager;
+package be.wget.inpres.java.restaurant.config;
 
 import java.text.DateFormat;
 import java.util.Date;
@@ -19,10 +19,17 @@ import javax.swing.JLabel;
 public class DateTimeThread extends Thread {
     
     private JLabel dateTimeLabel;
+    int dateFormat;
+    Locale locale;
     private boolean continueExecution;
     
-    public DateTimeThread(JLabel dateTimeLabel) {
+    public DateTimeThread(JLabel dateTimeLabel,
+        int dateFormat,
+        Locale locale) {
         this.dateTimeLabel = dateTimeLabel;
+        this.dateFormat = dateFormat;
+        this.locale = locale;
+        System.out.println("Selected locale (from GUI): " + locale);
         this.continueExecution = true;
     }
     
@@ -31,8 +38,8 @@ public class DateTimeThread extends Thread {
             Date now = new Date();
             // The locale can also be defined like this:
             // new Locale("EN", "BE");
-            dateTimeLabel.setText(DateFormat.getDateTimeInstance(
-                DateFormat.FULL, DateFormat.FULL, Locale.US).format(now));
+            this.dateTimeLabel.setText(DateFormat.getDateTimeInstance(
+                this.dateFormat, this.dateFormat, this.locale).format(now));
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException ex) {

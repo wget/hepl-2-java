@@ -70,7 +70,7 @@ public class UsersManager {
             throws UsersManagerUserNotFoundException,
                    UsersManagerPasswordInvalidException,
                    UsersManagerLoginDialogCancelled {
-        LoginGui login = new LoginGui(this.parent, true);
+        LoginGui login = new LoginGui(this.parent, this.applicationConfig);
         login.setVisible(true);
         if (login.isDialogCancelled()) {
             throw new UsersManagerLoginDialogCancelled();

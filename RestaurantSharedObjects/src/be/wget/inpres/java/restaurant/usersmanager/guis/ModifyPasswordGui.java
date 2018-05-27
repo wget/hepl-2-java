@@ -194,8 +194,6 @@ public class ModifyPasswordGui extends JDialog implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        System.out.println("DEBUG getSource: " + ke.getSource());
-        
         if (ke.getKeyCode() == KeyEvent.VK_ENTER &&
             ke.getSource() == this.newPasswordTextfield) {
             this.performChange();

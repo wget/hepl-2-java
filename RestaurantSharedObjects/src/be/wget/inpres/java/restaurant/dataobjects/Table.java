@@ -16,35 +16,107 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 
 /**
  *
  * @author wget
  */
-public class Table {
+public class Table implements Serializable {
     // The table number can contain alphabetic chars.
     protected String number;
     protected ArrayList<PlateOrder> orders;
     protected int maxCovers;
     protected int effectiveCovers;
-    protected double billAmount;
     protected boolean billPaid;
     protected String waiterName;
+    protected BigDecimal drinkAmount;
 
     public Table(String number, int maxCovers) {
         this.number = number;
         this.maxCovers = maxCovers;
         this.orders = new ArrayList<>();
         this.billPaid = false;
+        this.effectiveCovers = 0;
+        this.drinkAmount = new BigDecimal(0);
     }   
     
-    public void addOrder(PlateOrder order) {
-        this.orders.add(order);
+    public void addOrder(PlateOrder orderToAdd) {
+        PlateOrder orderFound = null;
+        for (PlateOrder order: this.orders) {
+            if (order.isSent()) {
+                continue;
+            }
+            if (order.getPlate() instanceof MainCourse &&
+                orderToAdd.getPlate() instanceof MainCourse) {
+                if (((MainCourse)order.getPlate()).getCode().equals(
+                    ((MainCourse)orderToAdd.getPlate()).getCode())) {
+                    orderFound = order;
+                    break;
+                }
+            } else if (order.getPlate() instanceof Dessert &&
+                       orderToAdd.getPlate() instanceof Dessert) {
+                if (((Dessert)order.getPlate()).getCode().equals(
+                    ((Dessert)orderToAdd.getPlate()).getCode())) {
+                    orderFound = order;
+                    break;
+                }
+            }
+        }
+        
+        if (orderToAdd.getPlate() instanceof MainCourse) {
+            this.effectiveCovers += orderToAdd.getQuantity();
+        }
+        
+        if (orderFound == null) {
+            this.orders.add(orderToAdd);
+            return;
+        }
+            
+        orderFound.addQuantity(orderToAdd.getQuantity());
+        orderFound.setComment(orderToAdd.getComment());
     }
 
-    public void removeOrder(int position) {
-        this.orders.remove(position);
+    public void removeOrder(PlateOrder orderToRemove) {
+        String plateCodeToRemove;
+        if (orderToRemove.getPlate() instanceof MainCourse) {
+            plateCodeToRemove = ((MainCourse)orderToRemove.getPlate()).getCode();
+        } else {
+            plateCodeToRemove = ((Dessert)orderToRemove.getPlate()).getCode();
+        }
+        
+        for (int i = 0; i < this.orders.size(); i++) {
+
+            PlateOrder order = this.orders.get(i);
+            
+            String plateCode;
+            if (order.getPlate() instanceof MainCourse) {
+                plateCode = ((MainCourse)order.getPlate()).getCode();
+            } else {
+                plateCode = ((Dessert)order.getPlate()).getCode();
+            }
+            
+            if (plateCode.equals(plateCodeToRemove)) {
+                if (order.getQuantity() - orderToRemove.getQuantity() <= 0) {
+                    this.orders.remove(i);
+                } else {
+                    order.setQuantity(order.getQuantity() - orderToRemove.getQuantity());
+                    this.orders.set(i, order);
+                }
+                
+                if (order.getPlate() instanceof MainCourse) {
+                    if (order.getQuantity() - orderToRemove.getQuantity() < 0) {
+                        this.effectiveCovers = 0;
+                        System.out.println("Effective cover less 1:" + this.effectiveCovers);
+                    } else {
+                        this.effectiveCovers -= orderToRemove.getQuantity();
+                        System.out.println("Effective cover less 2:" + this.effectiveCovers);
+                    }
+                }
+            }
+        }
     }
 
     public void setEffectiveCovers(int covers) {
@@ -53,10 +125,6 @@ public class Table {
             return;
         }
         this.effectiveCovers = covers;
-    }
-
-    public void setBillAmount(double amount) {
-        this.billAmount = amount;
     }
 
     public void setBillPaid() {
@@ -83,8 +151,22 @@ public class Table {
         return effectiveCovers;
     }
 
-    public double getBillAmount() {
+    public BigDecimal getBillAmount() {
+        BigDecimal billAmount = new BigDecimal(0);
+        for (PlateOrder order: this.orders) {
+            billAmount = billAmount.add(order.getPrice());
+        }
+        billAmount = billAmount.add(this.drinkAmount);
+        System.out.println("DEBUG from table class: "+billAmount.toString());
         return billAmount;
+    }
+    
+    public void setDrinkAmount(BigDecimal amount) {
+        this.drinkAmount = amount;
+    }
+    
+    public BigDecimal getDrinkAmount() {
+        return this.drinkAmount;
     }
     
     public boolean isBillPaid() {
@@ -93,5 +175,47 @@ public class Table {
 
     public String getWaiterName() {
         return waiterName;
+    }
+    
+    public void bulkCompress() {
+        ArrayList<PlateOrder> cleanedOrders = new ArrayList<>();
+        for (int i = 0; i < this.orders.size(); i++) {
+            
+            PlateOrder order = this.orders.get(i);
+            String plateCode = null;
+            if (order.getPlate() instanceof MainCourse) {
+                plateCode = ((MainCourse)order.getPlate()).getCode();
+            } else if (order.getPlate() instanceof Dessert) {
+                plateCode = ((Dessert)order.getPlate()).getCode();
+            }
+            
+            int j = 0;
+            for (; j < cleanedOrders.size(); j++) {
+                PlateOrder orderCleaned = cleanedOrders.get(j);
+                String plateCodeCleanOrder = null;
+                if (orderCleaned.getPlate() instanceof MainCourse) {
+                    plateCodeCleanOrder = ((MainCourse)orderCleaned.getPlate()).getCode();
+                } else if (orderCleaned.getPlate() instanceof Dessert) {
+                    plateCodeCleanOrder = ((Dessert)orderCleaned.getPlate()).getCode();
+                }
+                if (plateCodeCleanOrder.equals(plateCode)) {
+                    break;
+                }
+            }
+            // If not found
+            if (j == cleanedOrders.size()) {
+                cleanedOrders.add(order);
+                continue;
+            }
+            
+            // We have an occurrence with the same plate code, gonna check if
+            // we need to merge them depending if they have been sent or not.
+            PlateOrder orderCleaned = cleanedOrders.get(j);
+            if (orderCleaned.isSent() == order.isSent()) {
+                orderCleaned.addQuantity(order.getQuantity());
+                orderCleaned.setComment(order.getComment());
+            }
+        }
+        this.orders = cleanedOrders;
     }
 }

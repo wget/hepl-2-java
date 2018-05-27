@@ -26,15 +26,16 @@
           <Group type="102" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="0" attributes="0">
-                  <Group type="102" alignment="0" attributes="0">
-                      <Component id="cancelButton" min="-2" pref="100" max="-2" attributes="0"/>
-                      <EmptySpace max="32767" attributes="0"/>
+                  <Component id="newPlateCodeLabel" alignment="0" max="32767" attributes="0"/>
+                  <Component id="newPlateCodeTextField" alignment="0" max="32767" attributes="0"/>
+                  <Component id="newPlateLabelLabel" alignment="0" max="32767" attributes="0"/>
+                  <Component id="newPlateLabelTextField" alignment="0" max="32767" attributes="0"/>
+                  <Component id="newPlatePriceLabel" alignment="0" pref="485" max="32767" attributes="0"/>
+                  <Component id="newPlatePriceTextField" alignment="0" max="32767" attributes="0"/>
+                  <Group type="102" alignment="1" attributes="0">
+                      <EmptySpace min="0" pref="0" max="32767" attributes="0"/>
                       <Component id="okButton" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <Component id="userNameLabel" alignment="0" max="32767" attributes="0"/>
-                  <Component id="newPasswordLabel" alignment="0" pref="390" max="32767" attributes="0"/>
-                  <Component id="newPasswordTextfield" alignment="0" max="32767" attributes="0"/>
-                  <Component id="usernameTextfied" alignment="0" max="32767" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
           </Group>
@@ -44,18 +45,19 @@
       <Group type="103" groupAlignment="0" attributes="0">
           <Group type="102" alignment="0" attributes="0">
               <EmptySpace max="-2" attributes="0"/>
-              <Component id="userNameLabel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace type="separate" max="-2" attributes="0"/>
-              <Component id="usernameTextfied" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="24" max="-2" attributes="0"/>
-              <Component id="newPasswordLabel" min="-2" max="-2" attributes="0"/>
-              <EmptySpace type="separate" max="-2" attributes="0"/>
-              <Component id="newPasswordTextfield" min="-2" max="-2" attributes="0"/>
-              <EmptySpace min="-2" pref="16" max="-2" attributes="0"/>
-              <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="okButton" alignment="3" min="-2" max="-2" attributes="0"/>
-                  <Component id="cancelButton" alignment="3" min="-2" max="-2" attributes="0"/>
-              </Group>
+              <Component id="newPlateCodeLabel" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Component id="newPlateCodeTextField" min="-2" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
+              <Component id="newPlateLabelLabel" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Component id="newPlateLabelTextField" min="-2" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
+              <Component id="newPlatePriceLabel" min="-2" max="-2" attributes="0"/>
+              <EmptySpace type="unrelated" max="-2" attributes="0"/>
+              <Component id="newPlatePriceTextField" min="-2" max="-2" attributes="0"/>
+              <EmptySpace min="-2" pref="20" max="-2" attributes="0"/>
+              <Component id="okButton" min="-2" max="-2" attributes="0"/>
               <EmptySpace max="32767" attributes="0"/>
           </Group>
       </Group>
@@ -64,33 +66,32 @@
   <SubComponents>
     <Component class="javax.swing.JButton" name="okButton">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Add new user"/>
+        <Property name="text" type="java.lang.String" value="Add new plate"/>
       </Properties>
       <Events>
         <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="okButtonActionPerformed"/>
       </Events>
     </Component>
-    <Component class="javax.swing.JLabel" name="userNameLabel">
+    <Component class="javax.swing.JLabel" name="newPlateCodeLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Username:"/>
+        <Property name="text" type="java.lang.String" value="New plate code:"/>
       </Properties>
     </Component>
-    <Component class="javax.swing.JLabel" name="newPasswordLabel">
+    <Component class="javax.swing.JTextField" name="newPlateCodeTextField">
+    </Component>
+    <Component class="javax.swing.JLabel" name="newPlateLabelLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="New password:"/>
+        <Property name="text" type="java.lang.String" value="New plate label:"/>
       </Properties>
     </Component>
-    <Component class="javax.swing.JButton" name="cancelButton">
+    <Component class="javax.swing.JTextField" name="newPlateLabelTextField">
+    </Component>
+    <Component class="javax.swing.JLabel" name="newPlatePriceLabel">
       <Properties>
-        <Property name="text" type="java.lang.String" value="Cancel"/>
+        <Property name="text" type="java.lang.String" value="New plate price:"/>
       </Properties>
-      <Events>
-        <EventHandler event="actionPerformed" listener="java.awt.event.ActionListener" parameters="java.awt.event.ActionEvent" handler="cancelButtonActionPerformed"/>
-      </Events>
     </Component>
-    <Component class="javax.swing.JPasswordField" name="newPasswordTextfield">
-    </Component>
-    <Component class="javax.swing.JTextField" name="usernameTextfied">
+    <Component class="javax.swing.JTextField" name="newPlatePriceTextField">
     </Component>
   </SubComponents>
 </Form>

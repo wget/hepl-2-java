@@ -24,8 +24,9 @@ import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
-import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
-import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsSerializer;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesSerializer;
+import be.wget.inpres.java.restaurant.fileserializer.TablesSerializer;
 import be.wget.inpres.java.restaurant.myutils.StringSlicer;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderSender;
 import be.wget.inpres.java.restaurant.roommanager.OrderReadyNotifyThread;
@@ -44,9 +45,8 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -76,17 +76,12 @@ public class RestaurantRoomManagerGui
     private final String currencySymbol = "EUR";
 
     // Hashtable is deprecated, let's use a Hashmap instead.
-
     private HashMap<String, Table> tables;
     private ArrayList<MainCourse> defaultMainCourses;
     private ArrayList<Dessert> defaultDesserts;
-    private ArrayList<Table> savedTables;
-    private ArrayList<PlateOrder> ordersToSend;
     private ArrayList<PlateOrder> ordersReady;
     private Table currentTable;
-    private int effectiveCovers;
     private int selectedTableIndex;
-    private BigDecimal billAmount;
     private DefaultListModel<String> ordersToSendListModel;
     private DefaultListModel<String> servedPlatesListModel;
     private RestaurantConfig applicationConfig;
@@ -122,8 +117,7 @@ public class RestaurantRoomManagerGui
         
         this.authenticateUser();
     }
-    
-    
+
     private void authenticateUser() {
 
         try {
@@ -184,17 +178,30 @@ public class RestaurantRoomManagerGui
             JOptionPane.showMessageDialog(
                 this,
                 "Unable to find the settings file \""
-                    + this.applicationConfig.getSettingsFilename()
+                    + this.applicationConfig.getSettingsFilename().substring(
+                        this.applicationConfig.getSettingsFilename()
+                        .lastIndexOf(File.separator)+1)
                     + "\". Using the defaults settings.",
                 this.applicationConfig.getRestaurantName(),
+                JOptionPane.WARNING_MESSAGE);
+        }
+        
+        try {
+            this.applicationConfig.saveFile();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "Unable to save the settings file to \""
+                    + this.applicationConfig.getSettingsFilename()
+                    + "\". Changing settings during this session might be lost "
+                    + "when you will close the app.",
+                "Serialization impossible",
                 JOptionPane.WARNING_MESSAGE);
         }
 
         // Init model
         this.ordersToSendListModel = new DefaultListModel<>();
         this.servedPlatesListModel = new DefaultListModel<>();
-        this.savedTables = new ArrayList<>();
-        this.ordersToSend = new ArrayList<>();
         this.ordersReady = new ArrayList<>();
 
         this.settingsMenu = new JMenu("Settings");
@@ -207,32 +214,40 @@ public class RestaurantRoomManagerGui
         this.ordersToSendList.setModel(this.ordersToSendListModel);
         this.servedPlatesList.setModel(this.servedPlatesListModel);
         this.selectedTableIndex = 0;
-        this.billAmount = new BigDecimal("0");
-        this.effectiveCovers = 0;
         this.ordersToSendList.addKeyListener(this);
 
-        // FIXME: Hardcoded tables
-        this.tables = new HashMap<>();
-        this.tables.put("G1", new Table("G1", 4));
-        this.tables.put("G2", new Table("G2", 4));
-        this.tables.put("G3", new Table("G3", 4));
-        this.tables.put("C11", new Table("C11", 4));
-        this.tables.put("C12", new Table("C12", 6));
-        this.tables.put("C13", new Table("C13", 4));
-        this.tables.put("C21", new Table("C21", 6));
-        this.tables.put("C22", new Table("C22", 6));
-        this.tables.put("D1", new Table("D1", 4));
-        this.tables.put("D2", new Table("D2", 2));
-        this.tables.put("D3", new Table("D3", 2));
-        this.tables.put("D3", new Table("D4", 2));
-        this.tables.put("D5", new Table("D5", 2));
+        TablesSerializer serializer = new TablesSerializer(
+            this.applicationConfig,
+            this.tables);
+        this.tables = serializer.loadTables();
+        
+        try {
+            serializer.saveTables();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "An error occurred when saving the tables. These might be lost "
+                    + "if you quit the applicaton now.",
+                "Serialization impossible",
+                JOptionPane.ERROR_MESSAGE);
+        }
         
         // Populate list of plates
-        this.defaultMainCourses = new DefaultMainCoursesImporter(
-            this.applicationConfig,
-            "plates.default.txt")
-                .getDefaultPlates();
-        this.defaultDesserts = new DefaultDessertsImporter(
+        DefaultMainCoursesSerializer mainCoursesSerializer =
+            new DefaultMainCoursesSerializer(
+                this.applicationConfig,
+                this.applicationConfig.getPlatesFilename());
+        this.defaultMainCourses = mainCoursesSerializer.getDefaultPlates();
+        try {
+            mainCoursesSerializer.saveFile();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(this,
+                "An issue occurred when trying to save the file with the main courses",
+                "Serialization impossible",
+                JOptionPane.ERROR_MESSAGE); 
+        }
+        
+        this.defaultDesserts = new DefaultDessertsSerializer(
             this.applicationConfig,
             "")
                 .getDefaultPlates();
@@ -271,6 +286,16 @@ public class RestaurantRoomManagerGui
         this.readAvailablePlatesButton.addKeyListener(this);
         this.tableCombobox.addKeyListener(this);
         this.addWindowListener(new RoomManagerWindowAdapter(this));
+        
+        this.listTablesMenuItem.addActionListener(this);
+        this.totalNumberClientsMenuItem.addActionListener(this);
+        this.totalBillsMenuItem.addActionListener(this);
+        
+        this.listPlatesMenuItem.addActionListener(this);
+        this.listDessertsMenuItem.addActionListener(this);
+        this.createPlateMenuItem.addActionListener(this);
+        this.removePlateMenuItem.addActionListener(this);
+        
         this.systemInfosMenuItem.addActionListener(this);
         this.dateTimeSettingsMenuItem.addActionListener(this);
         this.beginnerGuideMenuItem.addActionListener(this);
@@ -279,6 +304,94 @@ public class RestaurantRoomManagerGui
 
     @Override
     public void actionPerformed(ActionEvent e) {
+
+        if (e.getSource() == this.listTablesMenuItem) {
+            ListTablesGui listTablesGui = new ListTablesGui(this, this.tables);
+            listTablesGui.setLocationRelativeTo(this);
+            listTablesGui.setVisible(true);
+            listTablesGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.totalNumberClientsMenuItem) {
+            TotalNumberClientsGui totalNumberClientsGui =
+                new TotalNumberClientsGui(this, this.tables);
+            totalNumberClientsGui.setLocationRelativeTo(this);
+            totalNumberClientsGui.setVisible(true);
+            totalNumberClientsGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.totalBillsMenuItem) {
+            TotalBillsGui totalBills =
+                new TotalBillsGui(this, this.tables, this.currencySymbol);
+            totalBills.setLocationRelativeTo(this);
+            totalBills.setVisible(true);
+            totalBills.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.listPlatesMenuItem) {
+            ListPlatesGui listPlatesGui =
+                new ListPlatesGui(this, this.defaultMainCourses, this.currencySymbol);
+            listPlatesGui.setLocationRelativeTo(this);
+            listPlatesGui.setVisible(true);
+            listPlatesGui.dispose();
+            return;
+        }
+
+        if (e.getSource() == this.listDessertsMenuItem) {
+            ListDessertsGui listDessertsGui =
+                new ListDessertsGui(this, this.defaultDesserts, this.currencySymbol);
+            listDessertsGui.setLocationRelativeTo(this);
+            listDessertsGui.setVisible(true);
+            listDessertsGui.dispose();
+            return;
+        }
+        
+        if (e.getSource() == this.createPlateMenuItem) {
+            AddNewPlateGui addNewPlateGui =
+                new AddNewPlateGui(this, this.applicationConfig, this.defaultMainCourses);
+            addNewPlateGui.setLocationRelativeTo(this);
+            addNewPlateGui.setVisible(true);
+            addNewPlateGui.dispose();
+            ArrayList<Plate> plates = new ArrayList<>();
+            for (int i = 0; i < this.defaultMainCourses.size(); i++) {
+                plates.add(this.defaultMainCourses.get(i));
+            }
+            DefaultMainCoursesSerializer mainCoursesSerializer =
+                new DefaultMainCoursesSerializer(
+                    this.applicationConfig,
+                    plates);
+            try {
+                mainCoursesSerializer.saveFile();
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(this,
+                    "An issue occurred when trying to save the file with the "
+                        + "main courses. The new plate you added might get be "
+                        + "lost when you will close this application.",
+                    "Serialization impossible",
+                    JOptionPane.WARNING_MESSAGE); 
+            }
+            
+            // Add the new plate to the combobox
+            this.updateMainCourseComboboxUi();
+            return;
+        }
+        
+        if (e.getSource() == this.removePlateMenuItem) {
+            RemovePlateGui removePlateGui =
+                new RemovePlateGui(this, this.applicationConfig,
+                    this.defaultMainCourses, this.currencySymbol);
+            removePlateGui.setLocationRelativeTo(this);
+            removePlateGui.setVisible(true);
+            removePlateGui.dispose();
+
+            // Add the new plate to the combobox
+            this.updateMainCourseComboboxUi();
+            return;
+        }
+
         if (e.getSource() == this.systemInfosMenuItem) {
             SystemInfosGui systemInfoGui = new SystemInfosGui(this, true);
             systemInfoGui.setLocationRelativeTo(this);
@@ -289,11 +402,22 @@ public class RestaurantRoomManagerGui
 
         if (e.getSource() == this.dateTimeSettingsMenuItem) {
             DateSettingsGui dateSettingsGui = new DateSettingsGui(
-                this, true, this.applicationConfig);
+                this, this.applicationConfig);
             dateSettingsGui.setLocationRelativeTo(this);
             dateSettingsGui.setVisible(true);
-            System.out.println("DEBUG selected DateFormat: " + dateSettingsGui.getSelectedDateFormat());
-            System.out.println("DEBUG selected Locale: " + dateSettingsGui.getSelectedLocale());
+            try {
+                this.applicationConfig.setDateFormat(dateSettingsGui.getSelectedDateFormat());
+                this.applicationConfig.setLocale(dateSettingsGui.getSelectedLocale());
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(
+                    this,
+                    "Unable to save the settings file to \""
+                        + this.applicationConfig.getSettingsFilename()
+                        + "\". Changing settings during this session might be lost "
+                        + "when you will close the app.",
+                    "Serialization impossible",
+                    JOptionPane.WARNING_MESSAGE);
+            }
             dateSettingsGui.dispose();
             return;
         }
@@ -334,6 +458,78 @@ public class RestaurantRoomManagerGui
         }
     }
     
+    private void updateUiFromCurrentTable() {
+        
+        // Merge orders if their state is identical
+        this.currentTable.bulkCompress();
+        
+        // Clean GUI of values from previous table
+        this.ordersToSendListModel.clear();
+        this.servedPlatesListModel.clear();
+        this.platesQuantityTextfield.setText("X");
+        this.dessertsQuantityTextfield.setText("X");
+        this.drinksAmountTextfield.setText("X");
+
+        // Populate UI with the values of the new table
+        this.maxCoversValueLabel.setText(
+            String.valueOf(this.currentTable.getMaxCovers()));
+        this.effectiveCoversValueLabel.setText(
+            String.valueOf(this.currentTable.getEffectiveCovers()));
+        
+        for (PlateOrder order: this.currentTable.getOrders()) {
+            String plateCode = "";
+            if (order.getPlate() instanceof MainCourse) {
+                plateCode = ((MainCourse)order.getPlate()).getCode();
+            } else if (order.getPlate() instanceof Dessert) {
+                plateCode = ((Dessert)order.getPlate()).getCode();
+            }
+            
+            String orderLine;
+            // This is a drink
+            if (plateCode.isEmpty()) {
+                orderLine = order.getQuantity() + " " +
+                    order.getPlate().getLabel() + " (" +
+                    order.getPrice().toString() + " " +
+                    this.currencySymbol + ")";
+            // This is a plate (main course or dessert)
+            } else {
+                orderLine = order.getQuantity() + " " +
+                    plateCode + ": " +
+                    order.getPlate().getLabel() + " (" +
+                    order.getPrice().toString() + " " +
+                    this.currencySymbol + ")";
+            }
+            
+            if (order.isSent()) {
+                this.servedPlatesListModel.addElement(orderLine);
+            } else {
+                this.ordersToSendListModel.addElement(orderLine);
+            }
+        }
+        this.billAmountLabel.setText(
+            this.currentTable.getBillAmount() +
+            " " +
+            this.currencySymbol);
+        if (this.currentTable.isBillPaid()) {
+            this.billPaidStateLabel.setText("PAID");
+        } else {
+            this.billPaidStateLabel.setText("NOT PAID");
+        }
+        System.out.println("UI updated from current table");
+    }
+    
+    private void updateMainCourseComboboxUi() {
+        ArrayList<String> mainCourseNames = new ArrayList<>();
+        // Use functional operator like in JS.
+        // Equivalent to: for(MainCourse plate: this.defaultMainCourses)
+        this.defaultMainCourses.forEach((plate) -> {
+            mainCourseNames.add(plate.getCode() + ": " + plate.getLabel() +
+                " (" + plate.getPrice() + " " + this.currencySymbol + ")");
+        });
+        this.platesCombobox.setModel(new DefaultComboBoxModel<>(
+            mainCourseNames.toArray(new String[mainCourseNames.size()])));
+    }
+    
     private void initApplicationGui() {
         // Populate the combobox of restaurant tables
         // toArray() returns an array of objets, we need an array of strings
@@ -343,26 +539,17 @@ public class RestaurantRoomManagerGui
         Arrays.sort(tableNames);
         this.tableCombobox.setModel(new DefaultComboBoxModel<>(tableNames));
      
-        ArrayList<String> mainCourseNames = new ArrayList<>();
-        // Use functional operator like in JS.
-        // Equivalent to: for(MainCourse plate: this.defaultMainCourses)
-        this.defaultMainCourses.forEach((plate) -> {
-            mainCourseNames.add(plate.getCode() + ": " + plate.getLabel() +
-                " (" + plate.getPrice() + ")");
-        });
-        
-        this.platesCombobox.setModel(new DefaultComboBoxModel<>(
-            mainCourseNames.toArray(new String[mainCourseNames.size()])));
+        this.updateMainCourseComboboxUi();
         
         ArrayList<String> dessertNames = new ArrayList<>();
         this.defaultDesserts.forEach((plate) -> {
             dessertNames.add(plate.getCode() + ": " + plate.getLabel() +
-                " (" + plate.getPrice() + ")");
+                " (" + plate.getPrice() + " " + this.currencySymbol + ")");
         });
         this.dessertsCombobox.setModel(new DefaultComboBoxModel<>(
             dessertNames.toArray(new String[dessertNames.size()])));
         
-        this.currentTable = tables.get(this.tableCombobox.getSelectedItem().toString());
+        this.currentTable = this.tables.get(this.tableCombobox.getSelectedItem().toString());
         this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
 
         // The getSelection on combobox is only populated when there has been
@@ -373,6 +560,8 @@ public class RestaurantRoomManagerGui
         this.tableCombobox.setSelectedIndex(0);
         this.platesCombobox.setSelectedIndex(0);
         this.dessertsCombobox.setSelectedIndex(0);
+        
+        this.updateUiFromCurrentTable();
     }
 
     private void startOrderReadyNotifyThread() {
@@ -618,6 +807,11 @@ public class RestaurantRoomManagerGui
         tablesMenu.setText("Tables");
 
         listTablesMenuItem.setText("List tables");
+        listTablesMenuItem.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                listTablesMenuItemActionPerformed(evt);
+            }
+        });
         tablesMenu.add(listTablesMenuItem);
 
         totalNumberClientsMenuItem.setText("Total number clients");
@@ -852,7 +1046,7 @@ public class RestaurantRoomManagerGui
                 return;
             }
 
-            if (this.effectiveCovers
+            if (this.currentTable.getEffectiveCovers()
                 + plateQuantityInput > this.currentTable.getMaxCovers()) {
                 throw new TooManyCoversException(
                     plateQuantityInput,
@@ -870,7 +1064,7 @@ public class RestaurantRoomManagerGui
             String noButtonText;
             String yesButtonText;
             String questionText;
-            switch (this.effectiveCovers) {
+            switch (this.currentTable.getEffectiveCovers()) {
                 case 0:
                     noButtonText = "No, keep no cover";
                     break;
@@ -879,7 +1073,7 @@ public class RestaurantRoomManagerGui
                     break;
                 default:
                     noButtonText = "No, keep my existing " +
-                        this.effectiveCovers + " covers";
+                        this.currentTable.getEffectiveCovers() + " covers";
                     break;
             }
             if (plateQuantityInput == 1) {
@@ -924,78 +1118,12 @@ public class RestaurantRoomManagerGui
 
     private void orderCurrentPlate(Plate plate, int quantity, String comment) {
         // Update model
-        int i = 0;
-        Boolean orderFound = false;
-        PlateOrder order = null;
-        for (; i < this.ordersToSend.size(); i++) {
-            order = this.ordersToSend.get(i);
-            if (order.getPlate() instanceof MainCourse &&
-                plate instanceof MainCourse) {
-                if (((MainCourse)order.getPlate()).getCode().equals(
-                    ((MainCourse)plate).getCode())) {
-                    orderFound = true;
-                    break;
-                }
-            } else if (order.getPlate() instanceof Dessert &&
-                       plate instanceof Dessert) {
-                if (((Dessert)order.getPlate()).getCode().equals(
-                    ((Dessert)plate).getCode())) {
-                    orderFound = true;
-                    break;
-                }
-            }
-        }
-
-        if (!orderFound) {
-            order = new PlateOrder(plate, quantity);
-        }
-
-        // Prevent erasing the previous comment if we are modifying an order
-        // and we do not respecify the order comment.
-        if (!comment.isEmpty()) {
-            order.setComment(comment);
-        }
-
-        if (!orderFound) {
-            this.ordersToSend.add(order);            
-        } else {
-            order.addQuantity(quantity);
-            this.ordersToSend.set(i, order);
-        }
-
-        if (plate instanceof MainCourse) {
-            this.effectiveCovers += quantity;
-        }
-        this.billAmount = this.billAmount.add(
-            new BigDecimal(plate.getPrice())
-            .multiply(new BigDecimal(quantity))
-            .setScale(2, RoundingMode.HALF_EVEN));
+        PlateOrder orderToAdd = new PlateOrder(plate, quantity);
+        orderToAdd.setComment(comment);
+        this.currentTable.addOrder(orderToAdd);
 
         // Update UI
-        String plateLabel = order.getPlate().getLabel();
-        String plateCode;
-        if (plate instanceof MainCourse) {
-            plateCode = ((MainCourse)order.getPlate()).getCode();
-        } else {
-            plateCode = ((Dessert)order.getPlate()).getCode();
-        }
-        String orderLine = order.getQuantity() + " " +
-            plateCode + ": " +
-            plateLabel + " (" +
-            order.getPrice().toString() + " " +
-            this.currencySymbol + ")";
-        if (!orderFound) {
-            this.ordersToSendListModel.addElement(orderLine);
-        } else {
-            this.ordersToSendListModel.setElementAt(orderLine, i);
-        }
-
-        if (plate instanceof MainCourse) {
-            this.effectiveCoversValueLabel.setText(
-                String.valueOf(this.effectiveCovers));
-        }
-        this.billAmountLabel.setText(
-            String.valueOf(this.billAmount + " " + this.currencySymbol));
+        this.updateUiFromCurrentTable();
 
         this.ordersSentCheckbox.setSelected(false);
     }
@@ -1048,63 +1176,45 @@ public class RestaurantRoomManagerGui
     }
 
     private void removeFromOrdersToSend() {
-        int selectedOrder = this.ordersToSendList.getSelectedIndex();
-        if (this.ordersToSend.isEmpty()) {
-            return;
-        }
-        PlateOrder order = this.ordersToSend.get(selectedOrder);
-        boolean isRemovalRequired = false;
-
-        if (order.getQuantity() == 1) {
-            isRemovalRequired = true;
-        }
-
+        
         // Update model
-        order.removeQuantity();
-        double unitPrice = 0;
-        if (order.getPlate() instanceof MainCourse) {
-            unitPrice = ((MainCourse)order.getPlate()).getPrice();
-            this.effectiveCovers--;
-        } else if (order.getPlate() instanceof Dessert) {
-            unitPrice = ((Dessert)order.getPlate()).getPrice();
+        HashMap<String, Integer> ordersToSendListMapping = new HashMap<>();
+        for (int i = 0; i < this.currentTable.getOrders().size(); i++) {
+            PlateOrder order = this.currentTable.getOrders().get(i);
+            if (order.isSent()) {
+                continue;
+            }
+            String plateCode;
+            if (order.getPlate() instanceof MainCourse) {
+                plateCode = ((MainCourse)order.getPlate()).getCode();
+            } else {
+                plateCode = ((Dessert)order.getPlate()).getCode();
+            }
+            String orderLine = order.getQuantity() + " " +
+                plateCode + ": " +
+                order.getPlate().getLabel() + " (" +
+                order.getPrice().toString() + " " +
+                this.currencySymbol + ")";
+            System.out.println("DEBUG ordersToSendListMapping: " + orderLine);
+            ordersToSendListMapping.put(orderLine, i);
         }
-        this.billAmount = this.billAmount.subtract(
-            new BigDecimal(unitPrice)
-            .setScale(2, RoundingMode.HALF_EVEN));
 
-        if (isRemovalRequired) {
-            this.ordersToSend.remove(selectedOrder);
-        } else {
-            this.ordersToSend.set(selectedOrder, order);
-        }
-
-        // Update UI
-        this.billAmountLabel.setText(
-            String.valueOf(this.billAmount + " " + this.currencySymbol));
-
-        if (isRemovalRequired) {
-            ((DefaultListModel)this.ordersToSendList.getModel())
-                .remove(selectedOrder);
+        String selectedLine = this.ordersToSendList.getSelectedValue();
+        if (selectedLine == null) {
             return;
         }
+        
+        int orderIndex = ordersToSendListMapping.get(selectedLine);
+        PlateOrder orderSelected = this.currentTable.getOrders().get(orderIndex);
+        // Forge a 1 item order to recompute properly the orders using the
+        // same method.
+        PlateOrder orderToRemove = new PlateOrder(orderSelected.getPlate(), 1);
+                    System.out.println("debug quantity before: " + this.currentTable.getEffectiveCovers());
+            this.currentTable.removeOrder(orderToRemove);
 
-        String plateCode;
-        String plateLabel;
-        if (order.getPlate() instanceof MainCourse) {
-            plateCode = ((MainCourse)order.getPlate()).getCode();
-            plateLabel = ((MainCourse)order.getPlate()).getLabel();
-            this.effectiveCoversValueLabel.setText(
-                String.valueOf(this.effectiveCovers));
-        } else {
-            plateCode = ((Dessert)order.getPlate()).getCode();
-            plateLabel = ((Dessert)order.getPlate()).getLabel();
-        }
-        String orderLine = order.getQuantity() + " " +
-            plateCode + ": " +
-            plateLabel + " (" +
-            order.getPrice().toString() + " " +
-            this.currencySymbol + ")";
-        this.ordersToSendListModel.setElementAt(orderLine, selectedOrder);
+            System.out.println("debug quantity after: " + this.currentTable.getEffectiveCovers());
+        
+        this.updateUiFromCurrentTable();
     }
 
     private void dessertsOrderButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dessertsOrderButtonActionPerformed
@@ -1112,8 +1222,16 @@ public class RestaurantRoomManagerGui
     }//GEN-LAST:event_dessertsOrderButtonActionPerformed
 
     private void ordersSendButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_ordersSendButtonActionPerformed
-
-        if (this.ordersToSend.isEmpty()) {
+        ArrayList<PlateOrder> ordersToSend = new ArrayList<>();
+        
+        for (PlateOrder order: this.currentTable.getOrders()) {
+            if (!order.isSent()) {
+                ordersToSend.add(order);
+                order.setSent();
+            }
+        }
+        
+        if (ordersToSend.isEmpty()) {
             JOptionPane.showMessageDialog(
                 this,
                 "There is no order to send.",
@@ -1123,7 +1241,7 @@ public class RestaurantRoomManagerGui
         }
 
         NetworkProtocolOrderSender encoder = new NetworkProtocolOrderSender(
-            this.applicationConfig, this.currentTable, this.ordersToSend);
+            this.applicationConfig, this.currentTable, ordersToSend);
         String request = encoder.encodeRequest();
 
         boolean retryConnection = true;
@@ -1200,21 +1318,17 @@ public class RestaurantRoomManagerGui
                 return;
             }
         }
+        
+        // Update model
+        for (PlateOrder order: this.currentTable.getOrders()) {
+            order.setSent();
+        }
 
         // Update UI
         for (int i = 0; i < this.ordersToSendListModel.size(); i++) {
             this.servedPlatesListModel.addElement(ordersToSendListModel.get(i));
         }
         this.ordersToSendListModel.clear();
-
-        // Update model
-        this.currentTable.setEffectiveCovers(this.effectiveCovers);
-        for (PlateOrder order: this.ordersToSend) {
-            this.currentTable.addOrder(order);
-            this.billAmount.add(order.getPrice());
-        }
-        this.ordersToSend.clear();
-        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
 
         // Update the type of drinks depending if there are other plates sent
         // or not. Applies to the UI (In the served plates list) and in the
@@ -1246,6 +1360,19 @@ public class RestaurantRoomManagerGui
             "Order received",
             JOptionPane.INFORMATION_MESSAGE);
         this.ordersSentCheckbox.setSelected(true);
+
+        try {
+            TablesSerializer serializer = new TablesSerializer(
+                this.applicationConfig, this.tables);
+            serializer.saveTables();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "An error occurred when saveing the tables. These might be lost "
+                    + "if you click the applicaton now.",
+                "Serialization impossible",
+                JOptionPane.ERROR_MESSAGE);
+        }
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
@@ -1260,7 +1387,7 @@ public class RestaurantRoomManagerGui
             return;
         }
 
-        this.saveCurrentTable();
+        this.tables.put(this.currentTable.getNumber(), this.currentTable);
 
         // Ask the user if he wants to change the current waiter
         WaiterChangeQuestionGui waiterChangeGui =
@@ -1310,156 +1437,27 @@ public class RestaurantRoomManagerGui
 
         // Recover the previous state of the table if any
         String newTableNumber = this.tableCombobox.getSelectedItem().toString();
-        boolean tableFound = false;
-        int tableIndex = 0;
-        while (tableIndex < this.savedTables.size()) {
-            if (newTableNumber.equals(this.savedTables.get(tableIndex).getNumber())) {
-                tableFound = true;
-                break;
-            }
-            tableIndex++;
-        }
-        if (tableFound) {
-            this.currentTable = this.savedTables.get(tableIndex);
-        } else {
-            this.currentTable = this.tables.get(newTableNumber);
-        }
+        this.currentTable = this.tables.get(newTableNumber);
 
         // Update model with new table info
         this.currentTable.setWaiterName(newWaiterName);
         this.selectedTableIndex = this.tableCombobox.getSelectedIndex();
-        this.billAmount = new BigDecimal(
-            String.valueOf(this.currentTable.getBillAmount()));
 
         // Update UI
-        // Clean GUI of values from previous table
-        this.ordersToSendListModel.clear();
-        this.ordersToSend.clear();
-        this.servedPlatesListModel.clear();
-        this.platesQuantityTextfield.setText("X");
-        this.dessertsQuantityTextfield.setText("X");
-        this.drinksAmountTextfield.setText("X");
-        this.effectiveCovers = 0;
-        // Populate UI with the values of the new table
-        this.maxCoversValueLabel.setText(String.valueOf(this.currentTable.getMaxCovers()));
-        this.effectiveCoversValueLabel.setText(String.valueOf(this.currentTable.getEffectiveCovers()));
-        for (PlateOrder order: this.currentTable.getOrders()) {
-            if (order.getPlate() instanceof MainCourse ||
-                order.getPlate() instanceof Dessert) {
-                String code;
-                if (order.getPlate() instanceof MainCourse) {
-                    code = ((MainCourse)order.getPlate()).getCode();
-                    // Should have been above in the code structure we have,
-                    // but avoid an additional log(n) cost by browsing the
-                    // orders a second time for barely nothing.
-                    this.effectiveCovers++;
-                } else {
-                    code = ((Dessert)order.getPlate()).getCode();
-                }
-
-                this.servedPlatesListModel.addElement(
-                    order.getQuantity() + " " +
-                    code + ": " +
-                    order.getPlate().getLabel() + " (" +
-                    order.getPrice().toString() + " " +
-                    this.currencySymbol + ")"
-                );
-            } else {
-                this.servedPlatesListModel.addElement(
-                    order.getQuantity() + " " +
-                    order.getPlate().getLabel() + " (" +
-                    order.getPrice().toString() + " " +
-                    this.currencySymbol + ")"
-                );
-            }
-        }
-        this.billAmountLabel.setText(String.valueOf(this.currentTable.getBillAmount()));
-        if (this.currentTable.isBillPaid()) {
-            this.billPaidStateLabel.setText("PAID");
-        } else {
-            this.billPaidStateLabel.setText("NOT PAID");
-        }
+        this.updateUiFromCurrentTable();
     }//GEN-LAST:event_tableComboboxItemStateChanged
-
-    private void saveCurrentTable() {
-        if (this.ordersToSend.size() > 0) {
-            Object[] options = {
-                "Yes, change table and loose my non sent orders",
-                "No, cancel"
-            };
-            String remainingToSend;
-            if (this.ordersToSend.size() == 1) {
-                remainingToSend = "There is one order that hasn't been sent yet."
-                    + " Changing table will loose them. "
-                    + "Do you want to change table?";
-            } else {
-                remainingToSend = "There are " + this.ordersToSend.size()
-                    + " orders that haven't been sent yet. Changing table will "
-                    + "loose them. Do you want to change table?";
-            }
-
-            int answer = JOptionPane.showOptionDialog(
-                this,
-                remainingToSend,
-                "Orders not sent",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.QUESTION_MESSAGE,
-                // Do not use a custom Icon.
-                null,
-                // Specifies the titles of the buttons.
-                options,
-                // Use default button title.
-                options[1]);
-
-            // Cancel the table switch
-            if (answer == JOptionPane.CLOSED_OPTION ||
-                // If you are not using GTK, don't forget the YES and NO
-                // constant are inverted because we really wanted to have the
-                // No statement at the left while Swing uses Yes at the right.
-                // We changed back to NO here as GTK should be enabled.
-                answer == JOptionPane.NO_OPTION) {
-
-                // Reselect previous table in the combobox item.
-                // This has as effect to retrigger this ItemEvent.
-                this.tableCombobox.setSelectedIndex(this.selectedTableIndex);
-                return;
-            }
-        }
-
-        // Recompute the bill amount in order to discard non delivered orders
-        this.billAmount = new BigDecimal(0);
-        for(PlateOrder order: this.currentTable.getOrders()) {
-            this.billAmount = this.billAmount.add(order.getPrice());
-        }
-        this.currentTable.setBillAmount(Double.parseDouble(this.billAmount.toString()));
-
-        // Save the current table
-        boolean tableFound = false;
-        int tableIndex = 0;
-        while (tableIndex < this.savedTables.size()) {
-            if (this.currentTable.getNumber().equals(
-                this.savedTables.get(tableIndex).getNumber())) {
-                tableFound = true;
-                break;
-            }
-            tableIndex++;
-        }
-        if (tableFound) {
-            this.savedTables.set(tableIndex, this.currentTable);
-        } else {
-            this.savedTables.add(this.currentTable);
-        }
-    }
 
     private void exitApplication() {
         try {
             if (this.networkSender != null) {
                 this.networkSender.setEndSending();
             }
+            if (this.networkReceiver != null) {
+                this.networkReceiver.setEndReceiving();
+            }
         } catch (Exception e) {}
         this.dispose();
         System.exit(0);
-        System.out.println("Application exited.");
     }
 
     private void platesQuantityTextfieldActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_platesQuantityTextfieldActionPerformed
@@ -1471,9 +1469,9 @@ public class RestaurantRoomManagerGui
     }//GEN-LAST:event_drinksAddButtonActionPerformed
 
     private void billCheckoutButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_billCheckoutButtonActionPerformed
-        BillGui billDialog = new BillGui(this, true);
+        BillGui billDialog = new BillGui(this, this.applicationConfig);
         billDialog.setTable(this.tableCombobox.getSelectedItem().toString());
-        billDialog.setBillAmount(this.billAmount);
+        billDialog.setBillAmount(this.currentTable.getBillAmount());
         billDialog.setPlatesQuantity(this.currentTable.getEffectiveCovers());
         billDialog.setBillPaidState(this.currentTable.isBillPaid());
         billDialog.setVisible(true);
@@ -1496,7 +1494,6 @@ public class RestaurantRoomManagerGui
 
         ArrayList<PlateOrder> orderReadyFetched = new ArrayList<>(
             this.orderReadyNotifyThread.getOrdersReady());
-        this.orderReadyNotifyThread.clearOrdersReady();
         StringBuilder message = new StringBuilder();
         String messageTitle;
         if (orderReadyFetched.size() > 1) {
@@ -1551,6 +1548,10 @@ public class RestaurantRoomManagerGui
         addNewUserGui.dispose();
     }//GEN-LAST:event_addNewWaiterMenuItemActionPerformed
 
+    private void listTablesMenuItemActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_listTablesMenuItemActionPerformed
+        // TODO add your handling code here:
+    }//GEN-LAST:event_listTablesMenuItemActionPerformed
+
     private void orderDrinks() {
         try {
             double drinksAmount = Double.parseDouble(this.drinksAmountTextfield.getText());
@@ -1576,7 +1577,7 @@ public class RestaurantRoomManagerGui
             Drink drink = new Drink(drinkLine, PlateCategory.DRINK, drinksAmount);
             PlateOrder drinkOrder = new PlateOrder(drink, 1);
             this.currentTable.addOrder(drinkOrder);
-            this.billAmount = this.billAmount.add(drinkOrder.getPrice());
+            this.currentTable.setDrinkAmount(drinkOrder.getPrice());
 
             // Update UI
             this.servedPlatesListModel.addElement(
@@ -1584,8 +1585,7 @@ public class RestaurantRoomManagerGui
                 drink.getLabel() + " (" +
                 drink.getPrice() + " " +
                 this.currencySymbol + ")");
-            this.billAmountLabel.setText(String.valueOf(
-                this.billAmount + " " + this.currencySymbol));
+            this.billAmountLabel.setText(this.currentTable.getDrinkAmount().toString());
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
                 "The drinks amount must be a valid number",

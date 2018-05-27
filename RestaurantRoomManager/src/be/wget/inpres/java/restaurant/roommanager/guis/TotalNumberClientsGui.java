@@ -16,63 +16,53 @@
  */
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
-import be.wget.inpres.java.restaurant.dataobjects.Dessert;
 import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
-import java.awt.Color;
 import java.awt.Frame;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
 import java.util.HashMap;
-import javax.swing.table.DefaultTableModel;
+import javax.swing.JDialog;
 
 /**
  *
  * @author wget
  */
 @SuppressWarnings("serial")
-public class ListTablesGui extends javax.swing.JDialog implements KeyListener {
+public class TotalNumberClientsGui extends JDialog implements KeyListener {
 
     /**
      * Creates new form AboutGui
      */
-    public ListTablesGui(Frame parent, HashMap<String, Table> tables) {
+    public TotalNumberClientsGui(Frame parent, HashMap<String, Table> tables) {
         super(parent, true);
         initComponents();
-        this.setTitle("System infos");
-        this.tablesInfoTable.setModel(new ListTablesTableModel());
-        Color back = new Color(this.tablesInfoTable.getSelectionBackground().getRGB());
-        Color fore = new Color(this.tablesInfoTable.getSelectionForeground().getRGB());
-        this.tablesInfoTable.setDefaultRenderer(
-            String.class,
-            new ListTablesTableCellRenderer(back, fore));
-        this.tablesInfoTable.setAutoCreateRowSorter(true);
-        // Force sort on table name
-        this.tablesInfoTable.getRowSorter().toggleSortOrder(0);
-        this.tablesInfoTable.addKeyListener(this);
-
-        ListTablesTableModel dtm = (ListTablesTableModel)this.tablesInfoTable.getModel();
+        this.setTitle("Total number of clients");
+        
+        this.totalNumberClientsTextField.setEditable(false);
+        this.totalNumberClientsTextField.addKeyListener(this);
+        
+        this.notesTextArea.setWrapStyleWord(true);
+        this.notesTextArea.setLineWrap(true);
+        this.notesTextArea.setEditable(false);
+        this.notesTextArea.addKeyListener(this);
+        
+        int totalClients = 0;
         for (String tableNumber: tables.keySet()) {
-            ArrayList<String> propertyValue = new ArrayList<>();
-            propertyValue.add(tableNumber);
-            StringBuilder platesLine = new StringBuilder();
-            for (PlateOrder order: tables.get(tableNumber).getOrders()) {     
-                platesLine.append(order.getQuantity());
-                platesLine.append(" ");
+            for (PlateOrder order: tables.get(tableNumber).getOrders()) {
                 if (order.getPlate() instanceof MainCourse) {
-                    platesLine.append(((MainCourse)order.getPlate()).getCode());
-                } else if (order.getPlate() instanceof Dessert) {
-                    platesLine.append(((Dessert)order.getPlate()).getCode());
+                    totalClients += order.getQuantity();
                 }
-                platesLine.append(": ");
-                platesLine.append(order.getPlate().getLabel());
-                platesLine.append(System.getProperty("line.separator"));
             }
-            propertyValue.add(platesLine.toString());
-            dtm.addRow(propertyValue.toArray());
         }
+        
+        String clientLabel = (totalClients > 1) ? "clients": "client";
+        this.totalNumberClientsTextField.setText(
+            String.valueOf(totalClients) +
+            " " +
+            clientLabel
+        );
     }
 
     /**
@@ -85,8 +75,10 @@ public class ListTablesGui extends javax.swing.JDialog implements KeyListener {
     private void initComponents() {
 
         okButton = new javax.swing.JButton();
+        totalNumberClientsLabel = new javax.swing.JLabel();
+        totalNumberClientsTextField = new javax.swing.JTextField();
         jScrollPane1 = new javax.swing.JScrollPane();
-        tablesInfoTable = new javax.swing.JTable();
+        notesTextArea = new javax.swing.JTextArea();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -97,26 +89,42 @@ public class ListTablesGui extends javax.swing.JDialog implements KeyListener {
             }
         });
 
-        tablesInfoTable.setModel(new ListTablesTableModel());
-        jScrollPane1.setViewportView(tablesInfoTable);
+        totalNumberClientsLabel.setText("Total number of clients for this service:");
+
+        totalNumberClientsTextField.setFont(new java.awt.Font("Dialog", 0, 30)); // NOI18N
+        totalNumberClientsTextField.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+
+        notesTextArea.setColumns(20);
+        notesTextArea.setRows(5);
+        notesTextArea.setText("Notes: Clients are counted for the current service only. Past files are not taken into account. Only effective clients are taken into account which means the number of clients are determined by the number of main courses ordered for this particular service only.");
+        jScrollPane1.setViewportView(notesTextArea);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(jScrollPane1)
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap(391, Short.MAX_VALUE)
+                        .addGap(0, 0, Short.MAX_VALUE)
                         .addComponent(okButton, javax.swing.GroupLayout.PREFERRED_SIZE, 100, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addComponent(jScrollPane1))
+                    .addComponent(totalNumberClientsTextField, javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.LEADING, layout.createSequentialGroup()
+                        .addComponent(totalNumberClientsLabel)
+                        .addGap(0, 217, Short.MAX_VALUE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 233, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addComponent(totalNumberClientsLabel)
+                .addGap(18, 18, 18)
+                .addComponent(totalNumberClientsTextField, javax.swing.GroupLayout.PREFERRED_SIZE, 36, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(18, 18, 18)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 146, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addGap(18, 18, 18)
                 .addComponent(okButton)
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
@@ -131,8 +139,10 @@ public class ListTablesGui extends javax.swing.JDialog implements KeyListener {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JScrollPane jScrollPane1;
+    private javax.swing.JTextArea notesTextArea;
     private javax.swing.JButton okButton;
-    private javax.swing.JTable tablesInfoTable;
+    private javax.swing.JLabel totalNumberClientsLabel;
+    private javax.swing.JTextField totalNumberClientsTextField;
     // End of variables declaration//GEN-END:variables
 
     @Override
@@ -141,9 +151,7 @@ public class ListTablesGui extends javax.swing.JDialog implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
-            this.setVisible(false);
-        }
+        this.setVisible(false);
     }
 
     @Override

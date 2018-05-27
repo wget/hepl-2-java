@@ -7,8 +7,11 @@ package be.wget.inpres.java.restaurant.config;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DateFormat;
+import java.util.Locale;
 import java.util.Properties;
 
 /**
@@ -18,6 +21,9 @@ import java.util.Properties;
 public class RestaurantConfig {
     final private String settingsFilename = System.getProperty("user.dir") + File.separator + "settings.conf";
     final private String usersFilename = System.getProperty("user.dir") + File.separator + "users.conf";
+    final private String platesFilename = System.getProperty("user.dir") + File.separator + "plates.txt";
+    final private String tablesRoomManagerFilename = System.getProperty("user.dir") + File.separator + "plates_room_manager.dat";
+    final private String tablesKitchenManagerFilename = System.getProperty("user.dir") + File.separator + "plates_kitchen_manager.dat";
     final private String defaultApplicationName = "Le gourmet audacieux";
     final private String defaultServerAddress = "localhost";
     final private int defaultServerPort = 55161;
@@ -28,6 +34,9 @@ public class RestaurantConfig {
     final private String kitchenOrderAcceptedPayload = "ORDER_ACCEPTED";
     final private String kitchenOrderDeclinedPayload = "ORDER_REFUSED";
     final private String networkNoValue = "RIEN";
+    final private int printJobDelay = 5;
+    final private Locale locale = Locale.ENGLISH;
+    final private int dateFormat = DateFormat.DEFAULT;
 
     private Properties restaurantConfig;
     private boolean configFileDefined = false;
@@ -139,7 +148,7 @@ public class RestaurantConfig {
         if (networkNoValue == null || networkNoValue.isEmpty()) {
             return this.networkNoValue;
         }
-        return networkNoValue;        
+        return networkNoValue;
     }
     
     public String getUsersFilename() {
@@ -147,6 +156,76 @@ public class RestaurantConfig {
         if (usersFilename == null || usersFilename.isEmpty()) {
             return this.usersFilename;
         }
-        return usersFilename;        
+        return usersFilename;
+    }
+
+    public String getPlatesFilename() {
+        String platesFilename = this.restaurantConfig.getProperty("PlatesFilename");
+        if (platesFilename == null || platesFilename.isEmpty()) {
+            return this.platesFilename;
+        }
+        return platesFilename;
+    }
+    
+    public int getPrintJobDelay() {
+        String printJobDelayString = this.restaurantConfig.getProperty("PrintJobDelay");
+        int printJobDelay;
+        try {
+            printJobDelay = Integer.parseInt(printJobDelayString);
+        } catch (NumberFormatException e) {
+            return this.printJobDelay;
+        }
+        return printJobDelay;
+    }
+    
+    public Locale getLocale() {
+        String locale = this.restaurantConfig.getProperty("Locale");
+        if (locale == null || locale.isEmpty()) {
+            return this.locale;
+        }
+        return new Locale(locale);
+    }
+    
+    public void setLocale(Locale locale) throws IOException {
+        this.restaurantConfig.setProperty("Locale", locale.toString());
+        this.saveFile();
+    }
+    
+    public int getDateFormat() {
+        String dateFormatString = this.restaurantConfig.getProperty("DateFormat");
+        int dateFormat;
+        try {
+            dateFormat = Integer.parseInt(dateFormatString);
+        } catch (NumberFormatException e) {
+            return this.dateFormat;
+        }
+        return dateFormat;
+    }
+    
+    public void setDateFormat(int dateFormat) throws IOException {
+        this.restaurantConfig.setProperty("DateFormat", String.valueOf(dateFormat));
+        this.saveFile();
+    }
+        
+    public String getTablesRoomManagerFilename() {
+        String tablesRoomManagerFilename = this.restaurantConfig.getProperty("TablesRoomManagerFilename");
+        if (tablesRoomManagerFilename == null || tablesRoomManagerFilename.isEmpty()) {
+            return this.tablesRoomManagerFilename;
+        }
+        return tablesRoomManagerFilename;
+    }
+    
+    public String getTablesKitchenManagerFilename() {
+        String tablesKitchenManagerFilename = this.restaurantConfig.getProperty("TablesKitchenManagerFilename");
+        if (tablesKitchenManagerFilename == null || tablesKitchenManagerFilename.isEmpty()) {
+            return this.tablesKitchenManagerFilename;
+        }
+        return tablesKitchenManagerFilename;
+    }
+    
+    public void saveFile() throws IOException {
+        FileOutputStream fos = new FileOutputStream(this.getSettingsFilename());
+        this.restaurantConfig.store(fos, null);
+        fos.close();
     }
 }

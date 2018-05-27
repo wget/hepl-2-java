@@ -116,7 +116,9 @@ public class AboutGui extends javax.swing.JDialog implements KeyListener {
 
     @Override
     public void keyPressed(KeyEvent ke) {
-        this.setVisible(false);
+        if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+            this.setVisible(false);
+        }
     }
 
     @Override

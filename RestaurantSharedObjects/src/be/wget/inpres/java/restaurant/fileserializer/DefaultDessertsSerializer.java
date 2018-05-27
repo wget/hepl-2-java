@@ -6,7 +6,7 @@
 package be.wget.inpres.java.restaurant.fileserializer;
 
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
-import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
+import be.wget.inpres.java.restaurant.dataobjects.Dessert;
 import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
 import java.util.ArrayList;
@@ -16,35 +16,35 @@ import java.util.HashMap;
  *
  * @author wget
  */
-public class DefaultMainCoursesImporter extends DefaultPlatesImporter {
-    public DefaultMainCoursesImporter(
+public class DefaultDessertsSerializer extends DefaultPlatesSerializer {
+    public DefaultDessertsSerializer(
         RestaurantConfig applicationConfig,
         String filename
     ) {
-        super(applicationConfig, PlateCategory.MAIN_COURSE, filename);
+        super(applicationConfig, PlateCategory.DESSERT, filename);
     }
     
-    public ArrayList<MainCourse> getDefaultPlates() {
+    public ArrayList<Dessert> getDefaultPlates() {
         if (this.defaultPlates.isEmpty()) {
             this.parseFile();
         }
-        ArrayList<MainCourse> defaultMainCourses = new ArrayList<>();
+        ArrayList<Dessert> defaultDesserts = new ArrayList<>();
         for (Plate plate: this.defaultPlates) {
-            defaultMainCourses.add((MainCourse)plate);
+            defaultDesserts.add((Dessert)plate);
         }
-        return defaultMainCourses;
+        return defaultDesserts;
     }
     
-    public HashMap<String, MainCourse> getDefaultPlatesHashMap() {
+    public HashMap<String, Dessert> getDefaultPlatesHashMap() {
         if (this.defaultPlates.isEmpty()) {
             this.parseFile();
         }
-        HashMap<String, MainCourse> defaultMainCourses = new HashMap<>();
+        HashMap<String, Dessert> defaultDesserts = new HashMap<>();
         for (Plate plate: this.defaultPlates) {
-            defaultMainCourses.put(
-                ((MainCourse)plate).getCode(),
-                (MainCourse)plate);
+            defaultDesserts.put(
+                ((Dessert)plate).getCode(),
+                (Dessert)plate);
         }
-        return defaultMainCourses;
+        return defaultDesserts;
     }
 }

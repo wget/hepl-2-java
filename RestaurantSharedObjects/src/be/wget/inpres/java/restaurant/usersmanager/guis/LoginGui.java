@@ -16,9 +16,12 @@
  */
 package be.wget.inpres.java.restaurant.usersmanager.guis;
 
-import be.wget.inpres.java.restaurant.usersmanager.DateTimeThread;
+import be.wget.inpres.java.restaurant.config.RestaurantConfig;
+import be.wget.inpres.java.restaurant.config.DateTimeThread;
+import java.awt.Frame;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.Locale;
 import javax.swing.JOptionPane;
 
 /**
@@ -32,6 +35,7 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
     private String password;
     private boolean dialogCancelled;
     private DateTimeThread dateTimeThread;
+    private RestaurantConfig applicationConfig;
 
     /**
      * Creates new form Auth
@@ -39,9 +43,10 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
      * @param modal
      * @param applicationName
      */
-    public LoginGui(java.awt.Frame parent, boolean modal) {
-        super(parent, modal);
+    public LoginGui(Frame parent, RestaurantConfig applicationConfig) {
+        super(parent, true);
         initComponents();
+        this.applicationConfig = applicationConfig;
 
         setLocationRelativeTo(null);
         this.setResizable(false);
@@ -52,7 +57,10 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
         this.cancelButton.addKeyListener(this);
         this.loginButton.addKeyListener(this);
         
-        this.dateTimeThread = new DateTimeThread(this.dateLabel);
+        this.dateTimeThread = new DateTimeThread(
+            this.dateLabel,
+            this.applicationConfig.getDateFormat(),
+            this.applicationConfig.getLocale());
         this.dateTimeThread.start();
     }
 
@@ -75,7 +83,7 @@ public class LoginGui extends javax.swing.JDialog implements KeyListener {
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DO_NOTHING_ON_CLOSE);
 
-        dateLabel.setText("jLabel1");
+        dateLabel.setText(" ");
 
         loginLabel.setText("Waiter login:");
 

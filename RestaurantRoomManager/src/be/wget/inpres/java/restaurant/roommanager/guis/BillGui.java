@@ -16,13 +16,16 @@
  */
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
+import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import java.awt.Color;
+import java.awt.Frame;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.math.BigDecimal;
 import javax.swing.JOptionPane;
+import javax.swing.SwingWorker;
 
 /**
  *
@@ -32,14 +35,16 @@ import javax.swing.JOptionPane;
 public class BillGui extends javax.swing.JDialog implements KeyListener, ItemListener {
 
     private boolean billPaid;
+    private RestaurantConfig applicationConfig;
     
     /**
      * Creates new form BillGui
      */
-    public BillGui(java.awt.Frame parent, boolean modal) {
-        super(parent, modal);
+    public BillGui(java.awt.Frame parent, RestaurantConfig applicationConfig) {
+        super(parent, true);
         initComponents();
         this.setLocationRelativeTo(null);
+        this.applicationConfig = applicationConfig;
         
         this.tableTextfield.setEditable(false);
         this.platesQuantityTextfield.setEditable(false);
@@ -265,7 +270,23 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
     }
     
     private void printBill() {
-        System.out.println("Bill action: print");
+        PrintingGui printingGui = new PrintingGui(
+            (Frame)this.getParent(),
+            this.applicationConfig);
+        SwingWorker<Void, Void> mySwingWorker = new SwingWorker<Void, Void>(){
+            @Override
+            protected void done() {
+                // Close the dialog
+                printingGui.dispose();
+            }
+            @Override
+            protected Void doInBackground() throws Exception {
+                Thread.sleep(applicationConfig.getPrintJobDelay() * 1000);
+                return null;
+            }
+        };
+        mySwingWorker.execute();
+        printingGui.setVisible(true);
     }
     
     private void payBill() {

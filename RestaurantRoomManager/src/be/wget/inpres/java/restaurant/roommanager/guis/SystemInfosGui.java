@@ -16,6 +16,8 @@
  */
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import javax.swing.table.DefaultTableModel;
 
@@ -24,7 +26,7 @@ import javax.swing.table.DefaultTableModel;
  * @author wget
  */
 @SuppressWarnings("serial")
-public class SystemInfosGui extends javax.swing.JDialog {
+public class SystemInfosGui extends javax.swing.JDialog implements KeyListener {
 
     /**
      * Creates new form AboutGui
@@ -45,6 +47,7 @@ public class SystemInfosGui extends javax.swing.JDialog {
             dtm.addRow(propertyValue.toArray());
             propertyValue.clear();
         }
+        this.infoTable.addKeyListener(this);
     }
 
     /**
@@ -113,4 +116,19 @@ public class SystemInfosGui extends javax.swing.JDialog {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JButton okButton;
     // End of variables declaration//GEN-END:variables
+
+    @Override
+    public void keyTyped(KeyEvent ke) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent ke) {
+        if (ke.getKeyCode() == KeyEvent.VK_ENTER) {
+            this.setVisible(false);
+        }
+    }
+
+    @Override
+    public void keyReleased(KeyEvent ke) {
+    }
 }

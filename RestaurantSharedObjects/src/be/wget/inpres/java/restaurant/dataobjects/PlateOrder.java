@@ -16,6 +16,7 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Date;
@@ -24,12 +25,13 @@ import java.util.Date;
  *
  * @author wget
  */
-public class PlateOrder {
+public class PlateOrder implements Serializable {
     protected Plate plate;
     protected int quantity;
     protected BigDecimal price;
     protected String comment;
     protected Date orderDate;
+    protected boolean sent;
 
     public PlateOrder(Plate plate, int quantity) {
         this.plate = plate;
@@ -41,8 +43,10 @@ public class PlateOrder {
             // commercial pieces of software)
             // src.: https://introcs.cs.princeton.edu/java/91float/
             .setScale(2, RoundingMode.HALF_EVEN);
+        System.out.println("PlateOrder constructor price:" + this.price.toString());
         this.comment = new String();
         this.orderDate = new Date();
+        this.sent = false;
     }
 
     public void setPlate(Plate plate) {
@@ -61,9 +65,11 @@ public class PlateOrder {
 
     public void setQuantity(int quantity) {
         this.quantity = quantity;
+        BigDecimal oldPrice = new BigDecimal(this.price.intValue());
         this.price = new BigDecimal(this.plate.getPrice())
             .multiply(new BigDecimal(quantity))
             .setScale(2, RoundingMode.HALF_EVEN);
+        System.out.println("Updating price from :" + oldPrice.toString() + " to " + this.price.toString());
     }
 
     public Plate getPlate() {
@@ -92,5 +98,13 @@ public class PlateOrder {
 
     public void setOrderDate(Date orderDate) {
         this.orderDate = orderDate;
+    }
+    
+    public void setSent() {
+        this.sent = true;
+    }
+    
+    public boolean isSent() {
+        return this.sent;
     }
 }

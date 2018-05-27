@@ -6,9 +6,10 @@
 package be.wget.inpres.java.restaurant.fileserializer;
 
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
-import be.wget.inpres.java.restaurant.dataobjects.Dessert;
+import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
 import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateCategory;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -16,34 +17,45 @@ import java.util.HashMap;
  *
  * @author wget
  */
-public class DefaultDessertsImporter extends DefaultPlatesImporter {
-    public DefaultDessertsImporter(
+public class DefaultMainCoursesSerializer extends DefaultPlatesSerializer {
+    
+    public DefaultMainCoursesSerializer (
         RestaurantConfig applicationConfig,
         String filename
     ) {
-        super(applicationConfig, PlateCategory.DESSERT, filename);
+        super(applicationConfig, PlateCategory.MAIN_COURSE, filename);
     }
     
-    public ArrayList<Dessert> getDefaultPlates() {
+    public DefaultMainCoursesSerializer (
+        RestaurantConfig applicationConfig,
+        ArrayList<Plate> defaultPlates) {
+        super(applicationConfig, defaultPlates);
+    }
+    
+    public void saveFile() throws IOException {
+        super.saveFile();
+    }
+    
+    public ArrayList<MainCourse> getDefaultPlates() {
         if (this.defaultPlates.isEmpty()) {
             this.parseFile();
         }
-        ArrayList<Dessert> defaultMainCourses = new ArrayList<>();
+        ArrayList<MainCourse> defaultMainCourses = new ArrayList<>();
         for (Plate plate: this.defaultPlates) {
-            defaultMainCourses.add((Dessert)plate);
+            defaultMainCourses.add((MainCourse)plate);
         }
         return defaultMainCourses;
     }
     
-    public HashMap<String, Dessert> getDefaultPlatesHashMap() {
+    public HashMap<String, MainCourse> getDefaultPlatesHashMap() {
         if (this.defaultPlates.isEmpty()) {
             this.parseFile();
         }
-        HashMap<String, Dessert> defaultMainCourses = new HashMap<>();
+        HashMap<String, MainCourse> defaultMainCourses = new HashMap<>();
         for (Plate plate: this.defaultPlates) {
             defaultMainCourses.put(
-                ((Dessert)plate).getCode(),
-                (Dessert)plate);
+                ((MainCourse)plate).getCode(),
+                (MainCourse)plate);
         }
         return defaultMainCourses;
     }

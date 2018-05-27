@@ -16,11 +16,13 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
+
 /**
  *
  * @author wget
  */
-public class Drink extends Plate {
+public class Drink extends Plate implements Serializable {
 
     public Drink(String label, PlateCategory category, double price) {
         super(label, category, price);

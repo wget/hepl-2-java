@@ -22,13 +22,12 @@ import be.wget.inpres.java.restaurant.dataobjects.MainCourse;
 import be.wget.inpres.java.restaurant.dataobjects.Plate;
 import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
-import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsImporter;
-import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesImporter;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsSerializer;
+import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesSerializer;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderReceiver;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
-import java.awt.KeyboardFocusManager;
 import java.util.ArrayList;
 import java.util.HashMap;
 import javax.imageio.ImageIO;
@@ -119,11 +118,11 @@ public class RestaurantKitchenManagerGui
                 this.platesBeingPreparedTable));
 
         // Populate list of plates
-        this.defaultMainCourses = new DefaultMainCoursesImporter(
+        this.defaultMainCourses = new DefaultMainCoursesSerializer(
             this.applicationConfig,
-            "plates.default.txt")
+            this.applicationConfig.getPlatesFilename())
                 .getDefaultPlatesHashMap();
-        this.defaultDesserts = new DefaultDessertsImporter(
+        this.defaultDesserts = new DefaultDessertsSerializer(
             this.applicationConfig,
             "")
                 .getDefaultPlatesHashMap();
@@ -350,20 +349,16 @@ public class RestaurantKitchenManagerGui
         // Update model
         boolean tableFound = false;
         for (Table newTable: this.newTablesOrders) {
-            System.out.println("DEBUG newTable received : " + newTable.getNumber());
             tableFound = false;
             for (Table table: this.tablesModelTotal) {
-                System.out.println("DEBUG checking with table : " + table.getNumber());
                 if (table.getNumber().equals(newTable.getNumber())) {
                     tableFound = true;
                     for (PlateOrder order: newTable.getOrders()) {
-                        System.out.println("DEBUG adding order");
                         table.addOrder(order);
                     }
                 }
             }
             if (!tableFound) {
-                System.out.println("DEBUG adding order (table not found): ");
                 this.tablesModelTotal.add(newTable);
             }
         }
@@ -427,13 +422,11 @@ public class RestaurantKitchenManagerGui
         for (int i = this.platesReceivedTableModelSizeBefore, j = i;
              i < this.platesReceivedTableModelSizeAfter;
              i++) {
-            System.out.println("DEBUG removeRow from platesReceived: " + i);
             platesReceivedTableModel.removeRow(j);
         }
         for (int i = this.platesBeingPreparedTableModelSizeBefore, j = i;
              i < this.platesBeingPreparedTableModelSizeAfter;
              i++) {
-            System.out.println("DEBUG removeRow from platesBeingPrepared: " + i);
             platesBeingPreparedTableModel.removeRow(j);
         }
     }//GEN-LAST:event_orderDeclineButtonActionPerformed
@@ -442,18 +435,16 @@ public class RestaurantKitchenManagerGui
         DefaultTableModel platesBeingPreparedTableModel =
             (DefaultTableModel)platesBeingPreparedTable.getModel();
         ArrayList<PlateOrder> ordersToNotify = new ArrayList<>();
-        boolean orderBeingPrepared = false;
-        boolean orderAlreadyServed = false;
         for (int i = 0; i < platesBeingPreparedTableModel.getRowCount(); i++) {
-            orderBeingPrepared = (Boolean)platesBeingPreparedTableModel
-                .getValueAt(i, PlatesBeingPreparedTableColumns.READY_TO_SERVE);
-            if (!orderBeingPrepared) {
+            // If order NOT being prepared
+            if (!(Boolean)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.READY_TO_SERVE)) {
                 continue;
             }
-            
-            orderAlreadyServed = (Boolean)platesBeingPreparedTableModel
-                .getValueAt(i, PlatesBeingPreparedTableColumns.SERVED);
-            if (orderAlreadyServed) {
+
+            // If order already served
+            if ((Boolean)platesBeingPreparedTableModel
+                .getValueAt(i, PlatesBeingPreparedTableColumns.SERVED)) {
                 continue;
             }
 

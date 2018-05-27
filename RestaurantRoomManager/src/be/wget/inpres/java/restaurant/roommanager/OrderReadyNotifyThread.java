@@ -49,9 +49,8 @@ public class OrderReadyNotifyThread extends Thread {
         this.ordersReadyCheckbox = ordersReadyCheckbox;
 
         this.newOrdersReady = new ArrayList<>();
-        this.orderReadyNotifyThreadMonitor = new OrderReadyNotifyThreadMonitor(
-            this.ordersReady,
-            this.newOrdersReady);
+        this.orderReadyNotifyThreadMonitor =
+            new OrderReadyNotifyThreadMonitor(this.ordersReady);
         this.continueExecution = true;
     }
     
@@ -96,10 +95,6 @@ public class OrderReadyNotifyThread extends Thread {
     
     public void stopExecution() {
         this.continueExecution = false;
-    }
-    
-    public void clearOrdersReady() {
-        this.orderReadyNotifyThreadMonitor.clearOrdersReady();
     }
     
     public ArrayList<PlateOrder> getOrdersReady() {

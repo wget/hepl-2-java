@@ -20,6 +20,8 @@ import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import java.awt.Frame;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.text.DateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,21 +36,23 @@ import javax.swing.JDialog;
  * @author wget
  */
 @SuppressWarnings("serial")
-public class DateSettingsGui extends JDialog implements ItemListener {
+public class DateSettingsGui extends JDialog implements ItemListener, KeyListener {
 
     private ArrayList<ArrayList<Object>> dateFormatValues;
     private ArrayList<Locale> localeValues;
     private int selectedDateFormat;
     private Locale selectedLocale;
     private boolean isCancelled = false;
+    RestaurantConfig applicationConfig;
 
     /**
      * Creates new form AboutGui
      */
-    public DateSettingsGui(Frame parent, boolean modal, RestaurantConfig config) {
-        super(parent, modal);
+    public DateSettingsGui(Frame parent, RestaurantConfig applicationConfig) {
+        super(parent, true);
         initComponents();
         this.setTitle("Date settings");
+        this.applicationConfig = applicationConfig;
         
         // Set default values
         this.selectedDateFormat = DateFormat.DEFAULT;
@@ -86,6 +90,13 @@ public class DateSettingsGui extends JDialog implements ItemListener {
             if (locale.getDisplayName().isEmpty()) {
                 continue;
             }
+            
+            // Locale specific to a country do not work when configuring a date
+            // format.
+            if (locale.getDisplayName().contains("(") ||
+                locale.getDisplayName().contains(")")) {
+                continue;
+            }
             this.localeValues.add(locale);
         }
         
@@ -111,20 +122,31 @@ public class DateSettingsGui extends JDialog implements ItemListener {
         
         DefaultComboBoxModel<String> dateLanguageComboboxModel =
             (DefaultComboBoxModel<String>)this.dateLanguageCombobox.getModel();
-        
         for (Locale locale: this.localeValues) {
-            //dateLanguageComboboxModel.addElement(locale);
             dateLanguageComboboxModel.addElement(locale.getDisplayName());
         }
         
-        // Preselect default language in the combobox
-        int i = 0;
-        for (; i < this.localeValues.size(); i++) {
-            if (this.localeValues.get(i) == Locale.US) {
+        // Preselect selected date format in the combobox
+        for (int i = 0; i < this.dateFormatValues.size(); i++) {
+            if ((int)this.dateFormatValues.get(i).get(0) ==
+                this.applicationConfig.getDateFormat()) {
+                this.dateFormatCombobox.setSelectedIndex(i);
+                System.out.println("Date format detected: " + this.dateFormatValues.get(i).get(1));
                 break;
             }
         }
-        this.dateLanguageCombobox.setSelectedIndex(i);
+        // Preselect selected language in the combobox
+        for (int i = 0; i < this.localeValues.size(); i++) {
+            if (this.localeValues.get(i).equals(
+                this.applicationConfig.getLocale())) {
+                this.dateLanguageCombobox.setSelectedIndex(i);
+                System.out.println("Locale detected: " + this.localeValues.get(i));
+                break;
+            }
+        }
+
+        this.dateFormatCombobox.addKeyListener(this);
+        this.dateLanguageCombobox.addKeyListener(this);
     }
 
     /**
@@ -247,5 +269,18 @@ public class DateSettingsGui extends JDialog implements ItemListener {
     
     public boolean isGuiCancelled() {
         return this.isCancelled;
+    }
+
+    @Override
+    public void keyTyped(KeyEvent ke) {
+    }
+
+    @Override
+    public void keyPressed(KeyEvent ke) {
+        this.setVisible(false);
+    }
+
+    @Override
+    public void keyReleased(KeyEvent ke) {
     }
 }

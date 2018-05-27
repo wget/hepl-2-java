@@ -16,11 +16,13 @@
  */
 package be.wget.inpres.java.restaurant.dataobjects;
 
+import java.io.Serializable;
+
 /**
  *
  * @author wget
  */
-public abstract class Plate implements Service {
+public abstract class Plate implements Service, Serializable {
     protected double price;
     protected String label;
     protected PlateCategory category;
