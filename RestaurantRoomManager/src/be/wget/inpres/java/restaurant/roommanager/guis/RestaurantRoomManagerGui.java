@@ -221,16 +221,7 @@ public class RestaurantRoomManagerGui
             this.tables);
         this.tables = serializer.loadTables();
         
-        try {
-            serializer.saveTables();
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(
-                this,
-                "An error occurred when saving the tables. These might be lost "
-                    + "if you quit the applicaton now.",
-                "Serialization impossible",
-                JOptionPane.ERROR_MESSAGE);
-        }
+        this.serializeTables();
         
         // Populate list of plates
         DefaultMainCoursesSerializer mainCoursesSerializer =
@@ -257,6 +248,7 @@ public class RestaurantRoomManagerGui
         this.setLocationRelativeTo(null);
         this.ordersSentCheckbox.setEnabled(false);
         this.ordersReadyCheckbox.setEnabled(false);
+        this.billCheckoutButton.setEnabled(false);
 
         // Menu
         // Add space to align the remaining parts of the menu to the right.
@@ -500,22 +492,68 @@ public class RestaurantRoomManagerGui
                     this.currencySymbol + ")";
             }
             
-            if (order.isSent()) {
+            // If this is a plate sent or a drink (no code by default)
+            if (order.isSent() || plateCode.isEmpty()) {
                 this.servedPlatesListModel.addElement(orderLine);
+                this.billCheckoutButton.setEnabled(true);
             } else {
                 this.ordersToSendListModel.addElement(orderLine);
             }
         }
+
         this.billAmountLabel.setText(
             this.currentTable.getBillAmount() +
             " " +
             this.currencySymbol);
         if (this.currentTable.isBillPaid()) {
             this.billPaidStateLabel.setText("PAID");
+            this.ordersSendButton.setEnabled(false);
+            this.platesOrderButton.setEnabled(false);
+            this.dessertsOrderButton.setEnabled(false);
+            this.drinksAddButton.setEnabled(false);
         } else {
             this.billPaidStateLabel.setText("NOT PAID");
+            this.ordersSendButton.setEnabled(true);
+            this.platesOrderButton.setEnabled(true);
+            this.dessertsOrderButton.setEnabled(true);
+            this.drinksAddButton.setEnabled(true);
         }
         System.out.println("UI updated from current table");
+    }
+    
+    private void serializeTables() {
+        try {
+            TablesSerializer serializer = new TablesSerializer(
+                this.applicationConfig, this.tables);
+            serializer.saveTables();
+        } catch (IOException ex) {
+            JOptionPane.showMessageDialog(
+                this,
+                "An error occurred when saving the tables. These might be lost "
+                    + "if you click the applicaton now.",
+                "Serialization impossible",
+                JOptionPane.ERROR_MESSAGE);
+        }
+    }
+    
+    private void updateDrinkModel() {
+        // Update the type of drinks depending if there are other plates sent
+        // or not.
+        String drinkLine;
+        if (this.currentTable.getEffectiveCovers() == 1) {
+            drinkLine = "Drinks with plate";
+        } else if (this.currentTable.getEffectiveCovers() > 1) {
+            drinkLine = "Drinks with plates";
+        } else {
+            drinkLine = "Drinks without plate";
+        }
+        ArrayList<PlateOrder> orders = this.currentTable.getOrders();
+        for (int i = 0; i < orders.size(); i++) {
+            PlateOrder plateOrder = orders.get(i);
+            if (plateOrder.getPlate() instanceof Drink) {
+                plateOrder.getPlate().setLabel(drinkLine);
+            }
+        }
     }
     
     private void updateMainCourseComboboxUi() {
@@ -1124,6 +1162,7 @@ public class RestaurantRoomManagerGui
 
         // Update UI
         this.updateUiFromCurrentTable();
+        this.serializeTables();
 
         this.ordersSentCheckbox.setSelected(false);
     }
@@ -1323,36 +1362,10 @@ public class RestaurantRoomManagerGui
         for (PlateOrder order: this.currentTable.getOrders()) {
             order.setSent();
         }
+        this.updateDrinkModel();
 
         // Update UI
-        for (int i = 0; i < this.ordersToSendListModel.size(); i++) {
-            this.servedPlatesListModel.addElement(ordersToSendListModel.get(i));
-        }
-        this.ordersToSendListModel.clear();
-
-        // Update the type of drinks depending if there are other plates sent
-        // or not. Applies to the UI (In the served plates list) and in the
-        // in-memory model.
-        String drinkLine;
-        if (this.currentTable.getEffectiveCovers() == 1) {
-            drinkLine = "Drinks with plate";
-        } else if (this.currentTable.getEffectiveCovers() > 1) {
-            drinkLine = "Drinks with plates";
-        } else {
-            drinkLine = "Drinks without plate";
-        }
-        ArrayList<PlateOrder> orders = this.currentTable.getOrders();
-        for (int i = 0; i < orders.size(); i++) {
-            PlateOrder plateOrder = orders.get(i);
-            if (plateOrder.getPlate() instanceof Drink) {
-                plateOrder.getPlate().setLabel(drinkLine);
-                this.servedPlatesListModel.set(i,
-                    plateOrder.getQuantity() + " " +
-                        plateOrder.getPlate().getLabel() + " (" +
-                        plateOrder.getPlate().getPrice() + " " +
-                    this.currencySymbol + ")");
-            }
-        }
+        this.updateUiFromCurrentTable();
 
         JOptionPane.showMessageDialog(
             this,
@@ -1361,18 +1374,7 @@ public class RestaurantRoomManagerGui
             JOptionPane.INFORMATION_MESSAGE);
         this.ordersSentCheckbox.setSelected(true);
 
-        try {
-            TablesSerializer serializer = new TablesSerializer(
-                this.applicationConfig, this.tables);
-            serializer.saveTables();
-        } catch (IOException ex) {
-            JOptionPane.showMessageDialog(
-                this,
-                "An error occurred when saveing the tables. These might be lost "
-                    + "if you click the applicaton now.",
-                "Serialization impossible",
-                JOptionPane.ERROR_MESSAGE);
-        }
+        this.serializeTables();
     }//GEN-LAST:event_ordersSendButtonActionPerformed
 
     private void tableComboboxItemStateChanged(java.awt.event.ItemEvent evt) {//GEN-FIRST:event_tableComboboxItemStateChanged
@@ -1469,17 +1471,14 @@ public class RestaurantRoomManagerGui
     }//GEN-LAST:event_drinksAddButtonActionPerformed
 
     private void billCheckoutButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_billCheckoutButtonActionPerformed
-        BillGui billDialog = new BillGui(this, this.applicationConfig);
-        billDialog.setTable(this.tableCombobox.getSelectedItem().toString());
-        billDialog.setBillAmount(this.currentTable.getBillAmount());
-        billDialog.setPlatesQuantity(this.currentTable.getEffectiveCovers());
-        billDialog.setBillPaidState(this.currentTable.isBillPaid());
+        BillGui billDialog = new BillGui(
+            this,
+            this.applicationConfig,
+            this.currentTable);
         billDialog.setVisible(true);
-        if (billDialog.getPaymentDetails()) {
-            this.currentTable.setBillPaid();
-            this.billPaidStateLabel.setText("PAID");
-        }
         billDialog.dispose();
+        this.updateUiFromCurrentTable();
+        this.serializeTables();
     }//GEN-LAST:event_billCheckoutButtonActionPerformed
 
     private void readAvailablePlatesButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_readAvailablePlatesButtonActionPerformed
@@ -1577,15 +1576,9 @@ public class RestaurantRoomManagerGui
             Drink drink = new Drink(drinkLine, PlateCategory.DRINK, drinksAmount);
             PlateOrder drinkOrder = new PlateOrder(drink, 1);
             this.currentTable.addOrder(drinkOrder);
-            this.currentTable.setDrinkAmount(drinkOrder.getPrice());
-
+  
             // Update UI
-            this.servedPlatesListModel.addElement(
-                drinkOrder.getQuantity() + " " +
-                drink.getLabel() + " (" +
-                drink.getPrice() + " " +
-                this.currencySymbol + ")");
-            this.billAmountLabel.setText(this.currentTable.getDrinkAmount().toString());
+            this.updateUiFromCurrentTable();
         } catch (NumberFormatException e) {
             JOptionPane.showMessageDialog(this,
                 "The drinks amount must be a valid number",

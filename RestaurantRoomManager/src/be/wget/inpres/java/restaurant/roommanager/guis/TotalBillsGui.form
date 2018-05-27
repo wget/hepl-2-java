@@ -90,7 +90,7 @@
           <Properties>
             <Property name="columns" type="int" value="20"/>
             <Property name="rows" type="int" value="5"/>
-            <Property name="text" type="java.lang.String" value="Notes: Bills are counted for the current service only. Past files are not taken into account. Only effective bills for plates that have been sent to the kitchen are taken into account and for this particular service only."/>
+            <Property name="text" type="java.lang.String" value="Notes: Bills are counted for the current service only. Past files are not taken into account."/>
           </Properties>
         </Component>
       </SubComponents>

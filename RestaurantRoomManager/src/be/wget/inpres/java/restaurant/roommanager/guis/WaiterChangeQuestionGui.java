@@ -34,7 +34,7 @@ public class WaiterChangeQuestionGui extends javax.swing.JDialog implements KeyL
         super(parent, modal);
         initComponents();
 
-        this.setLocationRelativeTo(null);
+        this.setLocationRelativeTo(parent);
         this.setResizable(false);
 
         this.currentWaiterTextfield.setEditable(false);

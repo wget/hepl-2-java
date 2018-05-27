@@ -17,13 +17,13 @@
 package be.wget.inpres.java.restaurant.roommanager.guis;
 
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
+import be.wget.inpres.java.restaurant.dataobjects.Table;
 import java.awt.Color;
 import java.awt.Frame;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.math.BigDecimal;
 import javax.swing.JOptionPane;
 import javax.swing.SwingWorker;
 
@@ -34,24 +34,33 @@ import javax.swing.SwingWorker;
 @SuppressWarnings("serial")
 public class BillGui extends javax.swing.JDialog implements KeyListener, ItemListener {
 
-    private boolean billPaid;
     private RestaurantConfig applicationConfig;
+    private Table currentTable;
     
     /**
      * Creates new form BillGui
      */
-    public BillGui(java.awt.Frame parent, RestaurantConfig applicationConfig) {
+    public BillGui(java.awt.Frame parent, RestaurantConfig applicationConfig, Table currentTable) {
         super(parent, true);
         initComponents();
         this.setLocationRelativeTo(null);
         this.applicationConfig = applicationConfig;
+        this.currentTable = currentTable;
         
         this.tableTextfield.setEditable(false);
         this.platesQuantityTextfield.setEditable(false);
         this.billAmountTextfield.setEditable(false);
         
-        
-        this.billPaid = false;
+        this.tableTextfield.setText(currentTable.getNumber());
+        this.platesQuantityTextfield.setText(
+            String.valueOf(currentTable.getEffectiveCovers()));
+        this.billAmountTextfield.setText(
+            String.valueOf(currentTable.getBillAmount()));
+        if (this.currentTable.isBillPaid()) {
+            this.billAmountTextfield.setBackground(new Color(0, 153, 51));
+        } else {
+            this.billAmountTextfield.setBackground(new Color(255, 0, 0));
+        }
         
         this.tableTextfield.addKeyListener(this);
         this.platesQuantityTextfield.addKeyListener(this);
@@ -70,31 +79,6 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
         this.billActionViewRadio.setToolTipText("Just to see the bill details");
         this.billActionPrintRadio.setToolTipText("Craft an invoice document");
         this.billActionPayRadio.setToolTipText("Register the payment");
-    }
-
-    public void setTable(String table) {
-        this.tableTextfield.setText(table);
-    }
-
-    public void setPlatesQuantity(int quantity) {
-        this.platesQuantityTextfield.setText(String.valueOf(quantity));
-    }
-
-    public void setBillAmount(BigDecimal amount) {
-        this.billAmountTextfield.setText(String.valueOf(amount));
-    }
-
-    public void setBillPaidState(boolean state) {
-        this.billPaid = state;
-        if (this.billPaid) {
-            this.billAmountTextfield.setBackground(new Color(0, 153, 51));
-        } else {
-            this.billAmountTextfield.setBackground(new Color(255, 0, 0));
-        }
-    }
-    
-    public boolean getPaymentDetails() {
-        return this.billPaid;
     }
 
     /**
@@ -290,8 +274,8 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
     }
     
     private void payBill() {
-        System.out.println("Bill action: pay");
-        if (this.billPaid) {
+
+        if (this.currentTable.isBillPaid()) {
             JOptionPane.showMessageDialog(this,
             "The bill has already been paid",
             "Payment error",
@@ -299,7 +283,7 @@ public class BillGui extends javax.swing.JDialog implements KeyListener, ItemLis
             return;
         }
 
-        this.billPaid = true;
+        this.currentTable.setBillPaid();
         this.billAmountTextfield.setBackground(new Color(0, 153, 51));
     }
 

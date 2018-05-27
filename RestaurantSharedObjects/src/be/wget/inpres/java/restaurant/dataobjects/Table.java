@@ -197,6 +197,8 @@ public class Table implements Serializable {
                     plateCodeCleanOrder = ((MainCourse)orderCleaned.getPlate()).getCode();
                 } else if (orderCleaned.getPlate() instanceof Dessert) {
                     plateCodeCleanOrder = ((Dessert)orderCleaned.getPlate()).getCode();
+                } else {
+                    continue;
                 }
                 if (plateCodeCleanOrder.equals(plateCode)) {
                     break;

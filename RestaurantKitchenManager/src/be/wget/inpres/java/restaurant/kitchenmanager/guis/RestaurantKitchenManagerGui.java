@@ -24,12 +24,24 @@ import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsSerializer;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesSerializer;
+import be.wget.inpres.java.restaurant.fileserializer.TablesSerializer;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderReceiver;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -101,6 +113,7 @@ public class RestaurantKitchenManagerGui
 
         this.setTitle(this.applicationConfig.getRestaurantName() + ": KitchenManager");
         this.setLocationRelativeTo(null);
+        this.addWindowListener(new KitchenManagerWindowAdapter(this));
         this.orderReceivedCheckbox.setEnabled(false);
         this.platesReceivedTable.setModel(new PlatesReceivedTableModel());
         this.platesReceivedTable.setAutoCreateRowSorter(true);
@@ -130,6 +143,8 @@ public class RestaurantKitchenManagerGui
         this.tablesModel = new ArrayList<>();
         this.tablesModelTotal = new ArrayList<>();
         this.newTablesOrders = new ArrayList<>();
+        this.loadTables();
+        this.populateUi(null);
         this.startNetworkServerConnection();
     }
 
@@ -505,10 +520,12 @@ public class RestaurantKitchenManagerGui
 
     private void populateUi(String receivedRequest) {
 
-        this.orderReceivedLabel.setSize(
-            this.getSize().width - this.orderDeclineButton.getSize().width - 50,
-            this.getSize().height - this.orderDeclineButton.getSize().height - 50);
-        this.orderReceivedLabel.setText(">> " + receivedRequest);
+        if (receivedRequest == null) {
+            this.orderReceivedLabel.setSize(
+                this.getSize().width - this.orderDeclineButton.getSize().width - 50,
+                this.getSize().height - this.orderDeclineButton.getSize().height - 50);
+            this.orderReceivedLabel.setText(">> " + receivedRequest);
+        }
 
         PlatesReceivedTableModel platesReceivedTableModel =
             (PlatesReceivedTableModel)platesReceivedTable.getModel();
@@ -708,5 +725,77 @@ public class RestaurantKitchenManagerGui
             return;
         }
         this.orderCommentTextArea.setText(orderWithComment.getComment());
+    }
+
+    private void loadTables() {
+        try {
+            FileInputStream fis = new FileInputStream(
+                this.applicationConfig.getTablesKitchenManagerFilename());
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            ArrayList<Object> toBeDeserialized = (ArrayList)ois.readObject();
+            
+            // Yes we know, Vector is old stuff, but this is school requirement...
+            Vector platesReceivedDataVector = (Vector)toBeDeserialized.get(0);
+            ArrayList<Object> platesReceivedTableColumns = (ArrayList)toBeDeserialized.get(1);
+            DefaultTableModel model = (DefaultTableModel)this.platesReceivedTable.getModel();
+            model.setDataVector(platesReceivedDataVector, new Vector(platesReceivedTableColumns));
+            Vector platesBeingPreparedDataVector = (Vector)toBeDeserialized.get(2);
+            ArrayList<Object> platesBeingPreparedTableColumns = (ArrayList<Object>)toBeDeserialized.get(3);
+            model = (DefaultTableModel)this.platesBeingPreparedTable.getModel();
+            model.setDataVector(platesBeingPreparedDataVector, new Vector(platesBeingPreparedTableColumns));
+            this.tablesModel = (ArrayList<Table>)toBeDeserialized.get(4);
+            this.tablesModelTotal = (ArrayList<Table>)toBeDeserialized.get(5);
+            
+        } catch (IOException | ClassNotFoundException ex) {}
+    }
+    
+    private void serializeTables() {
+        ArrayList<Object> toBeSerialized = new ArrayList<>();
+        
+        DefaultTableModel model = (DefaultTableModel)this.platesReceivedTable.getModel();
+        toBeSerialized.add(model.getDataVector());
+        ArrayList<Object> tableColumns = new ArrayList<>();
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            tableColumns.add(model.getColumnName(i));
+        }
+        toBeSerialized.add(tableColumns);
+
+        model = (DefaultTableModel)this.platesBeingPreparedTable.getModel();
+        toBeSerialized.add(model.getDataVector());
+        tableColumns = new ArrayList<>();
+        for (int i = 0; i < model.getColumnCount(); i++) {
+            tableColumns.add(model.getColumnName(i));
+        }
+        toBeSerialized.add(tableColumns);
+        toBeSerialized.add(this.tablesModel);
+        toBeSerialized.add(this.tablesModelTotal);
+        
+        FileOutputStream fos;
+        try {
+            fos = new FileOutputStream(
+                this.applicationConfig.getTablesKitchenManagerFilename());
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(toBeSerialized);
+        } catch (IOException ex) {}
+    }
+    
+    class KitchenManagerWindowAdapter extends WindowAdapter {
+
+        RestaurantKitchenManagerGui frame;
+
+        public KitchenManagerWindowAdapter(RestaurantKitchenManagerGui frame) {
+            super();
+            this.frame = frame;
+        }
+
+        @Override
+        public void windowClosing(WindowEvent event) {
+            frame.serializeTables();
+            JOptionPane.showMessageDialog(
+                frame,
+                "Tables serialized with successful.",
+                frame.applicationConfig.getRestaurantName(),
+                JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 }

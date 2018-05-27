@@ -93,7 +93,7 @@ public class TotalBillsGui extends JDialog implements KeyListener {
 
         notesTextArea.setColumns(20);
         notesTextArea.setRows(5);
-        notesTextArea.setText("Notes: Bills are counted for the current service only. Past files are not taken into account. Only effective bills for plates that have been sent to the kitchen are taken into account and for this particular service only.");
+        notesTextArea.setText("Notes: Bills are counted for the current service only. Past files are not taken into account.");
         jScrollPane1.setViewportView(notesTextArea);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
