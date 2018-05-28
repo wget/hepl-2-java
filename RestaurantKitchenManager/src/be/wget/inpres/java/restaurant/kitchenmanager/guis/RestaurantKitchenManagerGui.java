@@ -24,12 +24,16 @@ import be.wget.inpres.java.restaurant.dataobjects.PlateOrder;
 import be.wget.inpres.java.restaurant.dataobjects.Table;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultDessertsSerializer;
 import be.wget.inpres.java.restaurant.fileserializer.DefaultMainCoursesSerializer;
+import be.wget.inpres.java.restaurant.kitchenmanager.DishReadyBean;
+import be.wget.inpres.java.restaurant.kitchenmanager.GetRecipeBean;
+import be.wget.inpres.java.restaurant.kitchenmanager.TimeComputingBean;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolMalformedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolUnexpectedFieldException;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolOrderReceiver;
 import be.wget.inpres.java.restaurant.orderprotocol.NetworkProtocolServeNotifySender;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.beans.Beans;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -38,6 +42,8 @@ import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Vector;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
@@ -73,6 +79,10 @@ public class RestaurantKitchenManagerGui
     private int platesReceivedTableModelSizeAfter;
     private int platesBeingPreparedTableModelSizeBefore;
     private int platesBeingPreparedTableModelSizeAfter;
+    
+    private GetRecipeBean getRecipeBean;
+    private TimeComputingBean timeComputingBean;
+    private DishReadyBean dishReadyBean;
     
     /**
      * Creates new form KitchenManagerGui
@@ -142,6 +152,22 @@ public class RestaurantKitchenManagerGui
         this.loadTables();
         this.populateUi(null);
         this.startNetworkServerConnection();
+        
+        // Init beans
+        try {
+            this.getRecipeBean = (GetRecipeBean)Beans.instantiate(null, "be.wget.inpres.java.restaurant.kitchenmanager.GetRecipeBean");
+            this.getRecipeBean.setApplicationConfig(this.applicationConfig);
+            this.timeComputingBean = (TimeComputingBean)Beans.instantiate(null, "be.wget.inpres.java.restaurant.kitchenmanager.TimeComputingBean");
+            this.getRecipeBean.addIngredientsListener(timeComputingBean);
+            this.dishReadyBean = (DishReadyBean)Beans.instantiate(null, "be.wget.inpres.java.restaurant.kitchenmanager.DishReadyBean");
+            this.dishReadyBean.setApplicationConfig(this.applicationConfig);
+            this.dishReadyBean.setParentFrame(this);
+            this.timeComputingBean.addPropertyChangeListener(dishReadyBean);
+        } catch (IOException ex) {
+            Logger.getLogger(RestaurantKitchenManagerGui.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(RestaurantKitchenManagerGui.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     /**
@@ -654,6 +680,16 @@ public class RestaurantKitchenManagerGui
                 e.getFirstRow(),
                 PlatesBeingPreparedTableColumns.READY_TO_SERVE, 
                 true);
+            
+            this.getRecipeBean.setPlateCode(
+                (String)platesBeingPreparedTableModel.getValueAt(
+                    platesBeingPreparedTable.getSelectedRow(),
+                    PlatesBeingPreparedTableColumns.PLATE_CODE));
+            this.getRecipeBean.setQuantity(
+                (int)platesBeingPreparedTableModel.getValueAt(
+                    platesBeingPreparedTable.getSelectedRow(),
+                    PlatesBeingPreparedTableColumns.QUANTITY));
+            this.getRecipeBean.notifyIngredientsEvent();
             return;
         }
 

@@ -19,11 +19,14 @@ package be.wget.inpres.java.restaurant.usersmanager.guis;
 import be.wget.inpres.java.restaurant.config.RestaurantConfig;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManager;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManagerPasswordInvalidException;
+import be.wget.inpres.java.restaurant.usersmanager.UsersManagerSerializationException;
 import be.wget.inpres.java.restaurant.usersmanager.UsersManagerUserAlreadyExistsException;
 import java.awt.Frame;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JDialog;
 import javax.swing.JOptionPane;
 
@@ -164,7 +167,7 @@ public class AddNewUserGui extends JDialog implements KeyListener {
                 "Password invalid",
                 JOptionPane.ERROR_MESSAGE);
             return;
-        } catch (IOException ex) {
+        } catch (IOException | UsersManagerSerializationException ex) {
             JOptionPane.showMessageDialog(this,
                 "An issue occurred when trying to store the new user to the file. " +
                     "The password might likely have not been changed.",

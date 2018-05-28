@@ -24,6 +24,7 @@ public class RestaurantConfig {
     final private String platesFilename = System.getProperty("user.dir") + File.separator + "plates.txt";
     final private String tablesRoomManagerFilename = System.getProperty("user.dir") + File.separator + "plates_room_manager.dat";
     final private String tablesKitchenManagerFilename = System.getProperty("user.dir") + File.separator + "plates_kitchen_manager.dat";
+    final private String ingredientsFilename = System.getProperty("user.dir") + File.separator + "ingredients.dat";
     final private String defaultApplicationName = "Le gourmet audacieux";
     final private String defaultServerAddress = "localhost";
     final private int defaultServerPort = 55161;
@@ -221,6 +222,14 @@ public class RestaurantConfig {
             return this.tablesKitchenManagerFilename;
         }
         return tablesKitchenManagerFilename;
+    }
+    
+    public String getIngredientsFilename() {
+        String ingredientsFilename = this.restaurantConfig.getProperty("IngredientsFilename");
+        if (ingredientsFilename == null || ingredientsFilename.isEmpty()) {
+            return this.ingredientsFilename;
+        }
+        return ingredientsFilename;
     }
     
     public void saveFile() throws IOException {
